@@ -1,10 +1,11 @@
+"""
 import block
 import node
 import wallet
 import transaction
 import wallet
 
-"""
+
 import blockchain
 blockchain = Blockchain()
 
@@ -34,3 +35,20 @@ if __name__ == '__main__':
     app.run(host='127.0.0.1', port=port)
 """
 
+import os
+
+import uvicorn
+from dotenv import load_dotenv
+from fastapi import FastAPI
+
+load_dotenv(".env")
+
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+
+
+if __name__ == "__main__":
+    uvicorn.run("rest:app", host="0.0.0.0", port=8000, reload=True)
