@@ -79,8 +79,10 @@ class node:
 		print('There are not enough money to be spent')		
 		return False 
 
-	def add_transaction_to_block(self):
+	"""def add_transaction_to_block(self):
 		if 
+
+
 		#if enough transactions  mine
 
 
@@ -102,3 +104,4 @@ class node:
 
 	def resolve_conflicts(self):
 		#resolve correct chain
+"""

@@ -30,7 +30,7 @@ class Block:
 	def create_genesis_block(self, bootstrap_address):
 		block = Block(0, 1)
 		self.nonce = 0
-		trans = Transaction(0, 0, bootstrap_address, 100*glob_variables.participants, [])
+		trans = Transaction(0, bootstrap_address, 100*glob_variables.participants, [])
 		self.listOfTransactions.append(trans)
 		self.hash = self.get_hash()	
 		
