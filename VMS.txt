@@ -1,0 +1,15 @@
+Node 0 (Bootstrap):
+Public IPv4 : 83.212.81.224
+pass: 93TVIqmSTl
+
+Node 1 (Slave):
+pass: iEEwbZfV78
+
+Node 2 (Slave):
+pass: 0ufLxlZewV
+
+Node 3 (Slave):
+pass: uxkR83ExE5
+
+Node 4 (Slave):
+pass: O3mtB6TG5j
