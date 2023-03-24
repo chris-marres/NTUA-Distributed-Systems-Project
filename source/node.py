@@ -188,7 +188,7 @@ class Node:
 				return False
 			return True	
 		else: 
-
+			pass
 
 
 	#consensus functions
@@ -222,3 +222,4 @@ class Node:
 
 	def resolve_conflicts(self):
 		#resolve correct chain
+		pass
