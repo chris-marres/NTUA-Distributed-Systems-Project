@@ -91,7 +91,7 @@ class node:
 		print('There are not enough money to be spent')		
 		return False 
 
-	"""
+	
 	def add_transaction_to_block(self, trans):
 		# add transaction to the list of transactions of the sender and the receiver node
 		if (trans.sender_address == self.wallet.public_key or trans.receiver_address == self.wallet.public_key):
@@ -128,7 +128,7 @@ class node:
 		#   for the lock.
 
 		
-    
+    #----------------------------------------------------------------------------------------------------------------------------
 
 		# Update previous hash and index in case of insertions in the chain
 		
@@ -146,7 +146,8 @@ class node:
 				else:
 					return
 		self.broadcast_block(mined_block)
-        
+
+     
 	def mine_block(self, block):
 		block.nonce = 0
 		block.index = self.chain.blocks[-1].index + 1
@@ -160,18 +161,50 @@ class node:
 		return not self.stop_mining
 
 
+  
+	#def broadcast_block(self):
 
-	def broadcast_block(self):
+	def validate_block(self, block, new_block = True):
+		if not block.current_hash == block.get_hash():
+			print('The current hash of this block is not correct')
+			return False
+		if new_block:
+			if not block.previousHash == self.chain.blocks[-1].current_hash:
+				print ('The previous block hash is differnet. There should be a conflict')
+				return False
+			return True	
+		else: 
 
 
-	def valid_proof(self, difficulty=MINING_DIFFICULTY):
 
-	#concencus functions
+	#consensus functions
 
-	def valid_chain(self, chain):
-		#check for the longer chain accroose all nodes
+	"""	
+	def validate_chain(self, chain):
+		for block in chain.blocks:
 
+
+
+
+
+
+        blocks = chain.blocks
+        for i in range(len(blocks)):
+            if i == 0:
+                if (blocks[i].previous_hash != 1 or
+                        blocks[i].current_hash != blocks[i].get_hash()):
+                    return False
+            else:
+                valid_current_hash = (
+                    blocks[i].current_hash == blocks[i].get_hash()
+                )
+                valid_previous_hash = (
+                    blocks[i].previous_hash == blocks[i - 1].current_hash
+                )
+                if not valid_current_hash or not valid_previous_hash:
+                    return False
+        return True
+	"""
 
 	def resolve_conflicts(self):
 		#resolve correct chain
-"""
