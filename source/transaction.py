@@ -33,10 +33,12 @@ class Transaction:
         self.sender_address = sender_address
         self.receiver_address = receiver_address
         self.amount = value
-        self.rand = Crypto.Random.get_random_bytes(10)
-        self.transaction_id = SHA256.new((str(sender_address) + str(receiver_address)+str(value) + str(self.rand)).encode())
-        #self.transaction_id_not_hex = hashlib.sha256((str(sender_address) + str(receiver_address)+str(value) + str(self.rand)).encode())
-        #self.transaction_id = self.transaction_id_not_hex.hexdigest()
+        self.transaction_id = SHA256.new((str(sender_address) + str(receiver_address)+str(value)).encode())
+        # self.transaction_id_str = binascii.hexlify(self.transaction_id.digest()).decode('ascii')
+        # and convert back to SHA256 object
+        # self.transaction_id = SHA256.new(binascii.unhexlify(self.transaction_id_str))
+        # self.transaction_id_not_hex = hashlib.sha256((str(sender_address) + str(receiver_address)+str(value) + str(self.rand)).encode())
+        # self.transaction_id = self.transaction_id_not_hex.hexdigest()
         self.transaction_inputs = previous_output_id
         self.transaction_outputs = []
         self.signature = signature
@@ -45,6 +47,7 @@ class Transaction:
     def sign_transaction(self, private_key):
         signer = PKCS115_SigScheme(private_key)
         self.signature = signer.sign(self.transaction_id)
+                                     
         
     # Verify signature
     def verify_signature(self):

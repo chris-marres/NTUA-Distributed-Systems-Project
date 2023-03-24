@@ -2,7 +2,6 @@ from block import Block
 from wallet import Wallet
 from transaction import Transaction
 from blockchain import Blockchain
-from transaction_Input import TransactionInput
 import glob_variables
 
 from threading import Lock, Thread
@@ -12,9 +11,29 @@ from Crypto.PublicKey import RSA
 
 import requests
 import json
+import pickle
+import binascii
+
+import Crypto
+import Crypto.Random
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import RSA
+from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
 
 
 from glob_variables import participants
+
+from pydantic import BaseModel
+class TransactionPacket(BaseModel):
+	sender_address: str
+	receiver_address: str
+	amount: int
+	rand: str
+	transaction_id: str
+	transaction_inputs: str
+	transaction_outputs: str
+	signature: str
+
 
 class Node:
 
@@ -49,7 +68,7 @@ class Node:
 				if (output.receiver == self.wallet.address and output.unspent):
 					nbcs += output.amount
 					output.unspent = False
-					trans_input.append(TransactionInput(output.transaction_id))
+					trans_input.append(output.transaction_id)
 				if nbcs >= amount:
 					break
 		if nbcs < amount: 
@@ -65,7 +84,7 @@ class Node:
 		if not self.broadcast_transaction(trans):
 			for trans in self.wallet.transactions:
 				for output in trans.transaction_outputs:
-					if TransactionInput(output.transaction_id) in trans_input:
+					if output.transaction_id in trans_input:
 						output.unspent = True
 			return False
 
@@ -86,8 +105,37 @@ class Node:
 	def broadcast_transaction(self, transaction):
 		for node in self.ring.values():
 			if node['id'] != self.id:
-				obj = json.dumps(transaction.__dict__)
-				response = requests.post('http://' + node['ip'] + ':' + str(node['port']) + '/receive_transaction', json=obj)
+			
+				sender_address_dict = {
+					'n': transaction.sender_address.n,
+					'e': transaction.sender_address.e
+				}
+
+				# Convert dictionary to JSON string
+				sender_address_json = json.dumps(sender_address_dict)
+
+				rec_address_dict = {
+					'n': transaction.receiver_address.n,
+					'e': transaction.receiver_address.e
+				}
+
+				# Convert dictionary to JSON string
+				rec_address_json = json.dumps(rec_address_dict)
+
+				obj = {
+					"sender_address": sender_address_json,
+					"receiver_address": rec_address_json,
+					"amount": transaction.amount,
+					"transaction_id": transaction.transaction_id.hexdigest(),
+					"transaction_inputs": [item.hexdigest() for item in transaction.transaction_inputs],
+					"transaction_outputs": transaction.transaction_outputs,
+					"signature": transaction.signature.decode('latin-1')
+				}
+
+				obj = json.dumps(obj)
+				message = {'transaction_json': obj}
+				
+				response = requests.post('http://' + node['ip'] + ':' + str(node['port']) + '/receive_transaction', json=message)
 				if response.status_code != 200:
 					return False
 		return True
