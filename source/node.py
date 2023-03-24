@@ -8,11 +8,15 @@ import glob_variables
 from threading import Lock, Thread
 from collections import deque
 from copy import deepcopy
+from Crypto.PublicKey import RSA
+
+import requests
+import json
 
 
 from glob_variables import participants
 
-class node:
+class Node:
 
 	def __init__(self):
 		self.id = None
@@ -21,7 +25,7 @@ class node:
 		self.wallet = Wallet()
 		#Ring: information regarding the id, ip, port, public key and balance of every node
 		self.current_block = None
-		self.ring = []  
+		self.ring = {}
 		self.unconfirmed_blocks = deque()
 		self.block_lock = Lock() 
 	
@@ -33,14 +37,8 @@ class node:
 			self.current_block = Block(None, None) 	
 
 	def register_node_to_ring(self, id, ip, port, public_key, balance):
-		self.ring.append(
-            {
-                'id': id,
-                'ip': ip,
-                'port': port,
-                'public_key': public_key,
-                'balance': balance
-            })
+		self.pub_key_str = public_key.export_key().decode("utf-8")
+		self.ring[self.pub_key_str] = {"id": id, "ip": ip, "port": port, "public_key": public_key, "balance": balance}
 
 	def create_transaction(self, receiver, amount):
 		# check if this node has enough money to spend
@@ -73,8 +71,26 @@ class node:
 
 		return True
 	
+	def add_init_transaction(self):
+		trans = Transaction("0", self.wallet.address, participants * 100, [])
+		
+		# add the transaction to the list of transactions of the bootstrap node
+		self.wallet.transactions.append(trans)
+		
+		self.ring[self.pub_key_str]['balance'] += participants * 100
+
+		self.current_block.add_transaction(trans)
+
+		return True
+	
 	def broadcast_transaction(self, transaction):
-		pass
+		for node in self.ring.values():
+			if node['id'] != self.id:
+				obj = json.dumps(transaction.__dict__)
+				response = requests.post('http://' + node['ip'] + ':' + str(node['port']) + '/receive_transaction', json=obj)
+				if response.status_code != 200:
+					return False
+		return True
 
 	def validate_transaction(self, trans):
 		# check if the signature is valid
@@ -83,11 +99,9 @@ class node:
 			return False
 		
 		#check if sender has enough money
-		for node in self.ring:
-			if node['public_key'] == trans.sender_address:
-				if node['balance'] >= trans.amount:
-					#create the 2 transaction outputs and add them in UTXOs list.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-					return True
+		if self.ring[self.pub_key_str]['balance'] >= trans.amount:
+			#create the 2 transaction outputs and add them in UTXOs list.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			return True
 		print('There are not enough money to be spent')		
 		return False 
 
