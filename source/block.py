@@ -26,17 +26,10 @@ class Block:
 		self.nonce = None
 		self.hash = None
 		self.previousHash = prevHash
-
-	def create_genesis_block(self, bootstrap_address):
-		block = Block(0, 1)
-		self.nonce = 0
-		trans = Transaction(0, bootstrap_address, 100*glob_variables.participants, [])
-		self.listOfTransactions.append(trans)
-		self.hash = self.get_hash()	
 		
 	# Calculate the hash of the current block (self.hash)
 	def get_hash(self):
-		msg = (str([self.timestamp, self.previousHash, [trans['trans_id'] for trans in self.listOfTransactions], self.nonce])).encode()
+		msg = (str([self.timestamp, self.previousHash, [trans.transaction_id for trans in self.listOfTransactions], self.nonce])).encode()
 		hash = SHA256.new(msg)
 		return hash
 		
@@ -52,8 +45,7 @@ class Block:
 		
 		# After the addition of that transaction, the block will be full
 		if length == (glob_variables.capacity - 1):
-			self.listOfTransactions.append({'sender': transaction.sender_address, 'receiver': transaction.receiver_address, 'amount': transaction.amount, 'signature': transaction.signature})
-
+			self.listOfTransactions.append(transaction)
 			return True
 		
 		# The block is already full

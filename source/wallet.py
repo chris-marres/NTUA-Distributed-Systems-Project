@@ -2,13 +2,6 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
 
-# Generate 1024-bit RSA key pair (private + public key)
-private_key = RSA.generate(bits=1024)
-print(private_key)
-pubKey = private_key.publickey()
-
-import rsa
-
 class Wallet:
 
 	"""
@@ -22,7 +15,7 @@ class Wallet:
 
 	def __init__(self):
 		self.private_key = RSA.generate(bits=2048)
-		self.public_key = private_key.publickey()
+		self.public_key = self.private_key.publickey()
 
 		"""with open("public.pem", "wb") as f:
 			f.write(self.public_key.save_pkcs1("PEM"))
