@@ -15,8 +15,8 @@ class Block:
         timestamp: timestamp (float) of the creation of the block.
         listOfTransactions: list of all the transactions in the block.
         nonce: the solution (int) of proof-of-work.
-		hash: hash of the block.
-        previousHash: hash of the previous block in the blockchain.
+		current_hash: the hash of the block.
+        previousHash: the hash of the previous block in the blockchain.
     """
 	# Create block
 	def __init__(self, id, prevHash):
@@ -24,7 +24,7 @@ class Block:
 		self.timestamp = time.time()
 		self.listOfTransactions = []
 		self.nonce = None
-		self.hash = None
+		self.current_hash = None
 		self.previousHash = prevHash
 		
 	# Calculate the hash of the current block (self.hash)
@@ -36,7 +36,7 @@ class Block:
 	# Override the default method for comparing Block objects	
 	def __eq__(self, other):	
 		# Two blocks are equal if their hashes are equal
-		return self.hash == other.current_hash
+		return self.current_hash == other.current_hash
 
 
 	# Add a transaction to the block
