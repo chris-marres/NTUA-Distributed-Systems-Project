@@ -3,6 +3,7 @@ from wallet import Wallet
 from transaction import Transaction
 from blockchain import Blockchain
 import glob_variables
+import itertools
 
 from threading import Lock, Thread
 from collections import deque
@@ -46,7 +47,10 @@ class Node:
 		self.current_block = None
 		self.ring = {}
 		self.unconfirmed_blocks = deque()
-		self.block_lock = Lock() 
+		self.filter_lock = Lock()
+		self.chain_lock = Lock()
+		self.block_lock = Lock()
+		self.stop_mining = False 
 	
 	def create_new_block(self):
 		# the genesis block is being created
@@ -180,21 +184,7 @@ class Node:
 
 		# First, add the current block in the queue of unconfirmed blocks
 		self.unconfirmed_blocks.append(deepcopy(self.current_block))
-		# Mining procedure includes:
-		# - 
-		# - wait until the thread gets the lock.
-		# - check that the queue is not empty.
-		# - mine the first block of the queue.
-		# - if mining succeeds, broadcast the mined block.
-		# - if mining fails, put the block back in the queue and wait
-		#   for the lock.
-
-		
-    #----------------------------------------------------------------------------------------------------------------------------
-
-		# Update previous hash and index in case of insertions in the chain
-		
-		self.create_new_block()
+		self.current_block = self.create_new_block()
 		self.block_lock.release()
 		while True:
 			with self.filter_lock:
@@ -208,7 +198,6 @@ class Node:
 				else:
 					return
 		self.broadcast_block(mined_block)
-
      
 	def mine_block(self, block):
 		block.nonce = 0
@@ -226,8 +215,9 @@ class Node:
   
 	#def broadcast_block(self):
 
-	def validate_block(self, block, new_block = True):
-		if not block.current_hash == block.get_hash():
+	def validate_block(self, block):
+		return (block.previous_hash == self.chain.blocks[-1].current_hash and (block.current_hash == block.get_hash()))
+	"""	if not block.current_hash == block.get_hash():
 			print('The current hash of this block is not correct')
 			return False
 		if new_block:
@@ -237,37 +227,68 @@ class Node:
 			return True	
 		else: 
 			pass
+	"""
 
 
 	#consensus functions
 
-	"""	
+	def filter_blocks(self, mined_block):
+		with self.block_lock:
+			total_transactions = list(itertools.chain.from_iterable(
+                [
+                    unc_block.transactions
+                    for unc_block
+                    in self.unconfirmed_blocks
+                ]))
+			if (self.current_block):
+				total_transactions.extend(self.current_block.transactions)
+			self.current_block.transactions = []
+			filtered_transactions = [
+                transaction
+                for transaction
+                in total_transactions
+                if (
+                    transaction
+                    not in mined_block.transactions
+                )
+            ]
+			final_idx = 0
+			if not self.unconfirmed_blocks:
+				self.current_block.transactions = deepcopy(filtered_transactions)
+				return
+			i = 0
+			while ((i + 1) * glob_variables.capacity <= len(filtered_transactions)):
+				self.unconfirmed_blocks[i].transactions = deepcopy(
+					filtered_transactions[i * glob_variables.capacity:(
+                        i + 1) * glob_variables.capacity])
+				i += 1
+			if i * glob_variables.capacity < len(filtered_transactions):
+				self.current_block.transactions = deepcopy(
+                    filtered_transactions[i * glob_variables.capacity:])
+			
+			for i in range(len(self.unconfirmed_blocks) - i):
+				self.unconfirmed_blocks.pop()
+		return
+
 	def validate_chain(self, chain):
-		for block in chain.blocks:
-
-
-
-
-
-
-        blocks = chain.blocks
-        for i in range(len(blocks)):
-            if i == 0:
-                if (blocks[i].previous_hash != 1 or
+		blocks = chain.blocks
+		for i in range(len(blocks)):
+			if i == 0:
+				if (blocks[i].previous_hash != 1 or
                         blocks[i].current_hash != blocks[i].get_hash()):
-                    return False
-            else:
-                valid_current_hash = (
+					return False
+			else:
+				valid_current_hash = (
                     blocks[i].current_hash == blocks[i].get_hash()
                 )
-                valid_previous_hash = (
+				valid_previous_hash = (
                     blocks[i].previous_hash == blocks[i - 1].current_hash
                 )
-                if not valid_current_hash or not valid_previous_hash:
-                    return False
-        return True
-	"""
+				if not valid_current_hash or not valid_previous_hash:
+					return False
+		return True
 
-	def resolve_conflicts(self):
-		#resolve correct chain
+	
+
+	def resolve_conflicts(self, new_block):
 		pass
