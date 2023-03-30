@@ -31,7 +31,7 @@ class Transaction:
         signature: signature (bytes) that verifies that the owner of the wallet (wallet1) created the transaction.
     """
 
-    def __init__(self, sender_address, receiver_address, value, previous_output_id, signature = ('').encode()):
+    def __init__(self, sender_address, receiver_address, value, previous_output_id, nbc_sent):
         self.sender_address = sender_address
         self.receiver_address = receiver_address
         self.amount = value
@@ -41,8 +41,10 @@ class Transaction:
         # self.transaction_id_not_hex = hashlib.sha256((str(sender_address) + str(receiver_address)+str(value) + str(self.rand)).encode())
         # self.transaction_id = self.transaction_id_not_hex.hexdigest()
         self.transaction_inputs = previous_output_id
-        self.transaction_outputs = []
-        self.signature = signature
+        self.transaction_outputs = self.compute_transaction_output()
+        self.signature = None
+        self.nbc_sent = nbc_sent
+        
 
     # Sign transaction with private key
     def sign_transaction(self, private_key):
@@ -55,5 +57,24 @@ class Transaction:
             return True
         else:
             return False
+        
+    def compute_transaction_output(self):
+        list_of_outputs = []
+        output = {}
+        output['transaction_id'] = self.transaction_id
+        output['receiver'] = self.receiver
+        output['amount'] = self.amount        
+        list_of_outputs.append(output)
+
+        if self.nbc_sent > self.amount:
+            # If sender has sent more money than needed
+            sender_output = {}
+            sender_output['transaction_id'] = self.transaction_id
+            sender_output['receiver'] = self.receiver
+            sender_output['amount'] = self.nbc_sent - self.amount
+            list_of_outputs.append(sender_output)
+        return list_of_outputs        
+
+
 
             

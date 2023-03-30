@@ -29,6 +29,7 @@ class Block:
 		
 	# Calculate the hash of the current block (self.hash)
 	def get_hash(self):
+		#need to change that as we changed the transaction
 		msg = (str([self.timestamp, self.previousHash, [trans.transaction_id for trans in self.listOfTransactions], self.nonce])).encode()
 		hash = SHA256.new(msg)
 		return hash

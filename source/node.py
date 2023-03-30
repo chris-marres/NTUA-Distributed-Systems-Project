@@ -67,22 +67,25 @@ class Node:
 		print('Creating transaction')
 		# check if this node has enough money to spend
 		trans_input = []
-		nbcs = 0        
+		nbcs = 0      
+
 		for trans in self.wallet.transactions: 		
 			for output in trans.transaction_outputs:
 				if (output['receiver']['n'] == self.wallet.address['n'] and output['unspent']):
 					nbcs += output['amount']
 					output['unspent'] = False
 					trans_input.append(output['transaction_id'])
-				if nbcs >= amount:
-					break
+			if nbcs >= amount:
+				break
+	
 		if nbcs < amount: 
 			for trans in self.wallet.transactions:
 				for output in trans.transaction_outputs:
 					output['unspent'] = True
+				print('The sender node does not have enough money to spend for this transaction :/')	
 				return False
 		
-		trans = Transaction(self.wallet.address, receiver, amount, trans_input)
+		trans = Transaction(self.wallet.address, receiver, amount, trans_input, nbcs)
 		print('Transaction created')
 		trans.sign_transaction(self.wallet.private_key)
 		print('Transaction signed')
