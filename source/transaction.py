@@ -7,6 +7,8 @@ import Crypto.Random
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
+import rsa
+from hashlib import sha512
 
 #import requests
 #from flask import Flask, jsonify, request, render_template
@@ -33,8 +35,7 @@ class Transaction:
         self.sender_address = sender_address
         self.receiver_address = receiver_address
         self.amount = value
-        self.transaction_id = SHA256.new((str(sender_address) + str(receiver_address)+str(value)).encode())
-        # self.transaction_id_str = binascii.hexlify(self.transaction_id.digest()).decode('ascii')
+        self.transaction_id = int.from_bytes(sha512((str(sender_address) + str(receiver_address) + str(value)).encode()).digest(), byteorder='big')
         # and convert back to SHA256 object
         # self.transaction_id = SHA256.new(binascii.unhexlify(self.transaction_id_str))
         # self.transaction_id_not_hex = hashlib.sha256((str(sender_address) + str(receiver_address)+str(value) + str(self.rand)).encode())
@@ -45,16 +46,14 @@ class Transaction:
 
     # Sign transaction with private key
     def sign_transaction(self, private_key):
-        signer = PKCS115_SigScheme(private_key)
-        self.signature = signer.sign(self.transaction_id)
+        self.signature = pow(self.transaction_id, private_key.d, private_key.n)
                                      
         
     # Verify signature
     def verify_signature(self):
-        verifier = PKCS115_SigScheme(self.sender_address)
-        try:
-            verifier.verify(self.transaction_id, self.signature)
+        if pow(self.signature, self.sender_address['e'], self.sender_address['n']) == self.transaction_id:
             return True
-        except:
+        else:
             return False
+
             

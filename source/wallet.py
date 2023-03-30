@@ -15,7 +15,7 @@ class Wallet:
 
 	def __init__(self):
 		self.private_key = RSA.generate(bits=2048)
-		self.public_key = self.private_key.publickey()
+		self.public_key = {'n': self.private_key.n, 'e': self.private_key.e}
 
 		"""with open("public.pem", "wb") as f:
 			f.write(self.public_key.save_pkcs1("PEM"))
@@ -30,6 +30,6 @@ class Wallet:
 		total_amount = 0
 		for trans in self.transactions:
 			for output in trans.transaction_outputs: 
-				if output.receiver == self.address and output.unspent:
-					total_amount += output.amount
+				if output['receiver']['n'] == self.address['n'] and output['unspent']:
+					total_amount += output['amount']
 		return total_amount

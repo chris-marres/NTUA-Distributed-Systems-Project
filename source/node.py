@@ -60,38 +60,43 @@ class Node:
 			self.current_block = Block(None, None) 	
 
 	def register_node_to_ring(self, id, ip, port, public_key, balance):
-		self.pub_key_str = public_key.export_key().decode("utf-8")
+		self.pub_key_str = public_key['n']
 		self.ring[self.pub_key_str] = {"id": id, "ip": ip, "port": port, "public_key": public_key, "balance": balance}
 
 	def create_transaction(self, receiver, amount):
+		print('Creating transaction')
 		# check if this node has enough money to spend
 		trans_input = []
 		nbcs = 0        
 		for trans in self.wallet.transactions: 		
 			for output in trans.transaction_outputs:
-				if (output.receiver == self.wallet.address and output.unspent):
-					nbcs += output.amount
-					output.unspent = False
-					trans_input.append(output.transaction_id)
+				if (output['receiver']['n'] == self.wallet.address['n'] and output['unspent']):
+					nbcs += output['amount']
+					output['unspent'] = False
+					trans_input.append(output['transaction_id'])
 				if nbcs >= amount:
 					break
 		if nbcs < amount: 
 			for trans in self.wallet.transactions:
 				for output in trans.transaction_outputs:
-					output.unspent = True
+					output['unspent'] = True
 				return False
 		
 		trans = Transaction(self.wallet.address, receiver, amount, trans_input)
+		print('Transaction created')
 		trans.sign_transaction(self.wallet.private_key)
+		print('Transaction signed')
 	
 		# If broadcasting fails
+		print('Broadcasting transaction')
 		if not self.broadcast_transaction(trans):
 			for trans in self.wallet.transactions:
 				for output in trans.transaction_outputs:
-					if output.transaction_id in trans_input:
-						output.unspent = True
+					if output['transaction_id'] in trans_input:
+						output['unspent'] = True
 			return False
 
+		print('Transaction broadcasted')
 		return True
 	
 	def add_init_transaction(self):
@@ -107,13 +112,10 @@ class Node:
 		return True
 	
 	def broadcast_transaction(self, transaction):
+		print('Sending transaction:')
 		for node in self.ring.values():
-			if node['id'] != self.id:
-			
-				sender_address_dict = {
-					'n': transaction.sender_address.n,
-					'e': transaction.sender_address.e
-				}
+			if node['id'] != self.id:		
+				sender_address_dict = transaction.sender_address
 
 				# Convert dictionary to JSON string
 				sender_address_json = json.dumps(sender_address_dict)
@@ -130,10 +132,10 @@ class Node:
 					"sender_address": sender_address_json,
 					"receiver_address": rec_address_json,
 					"amount": transaction.amount,
-					"transaction_id": transaction.transaction_id.hexdigest(),
+					"transaction_id": transaction.transaction_id,
 					"transaction_inputs": [item.hexdigest() for item in transaction.transaction_inputs],
 					"transaction_outputs": transaction.transaction_outputs,
-					"signature": transaction.signature.decode('latin-1')
+					"signature": transaction.signature
 				}
 
 				obj = json.dumps(obj)
@@ -288,6 +290,18 @@ class Node:
 					return False
 		return True
 
+
+	def broadcast_ring(self):
+		for node in self.ring.values():
+			if node['id'] != self.id:
+
+				obj = json.dumps(self.ring)
+				message = {'ring_json': obj}
+
+				response = requests.post('http://' + node['ip'] + ':' + str(node['port']) + '/receive_ring', json=message)
+				if response.status_code != 200:
+					return False
+		return True
 	
 
 	def resolve_conflicts(self, new_block):

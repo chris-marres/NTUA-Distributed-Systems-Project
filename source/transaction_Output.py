@@ -14,3 +14,11 @@ class TransactionOutput:
         self.receiver = receiver
         self.amount = amount
         self.unspent = True
+    
+    def to_dict(self):
+        return {
+            'transaction_id': self.transaction_id,
+            'receiver': self.receiver,
+            'amount': self.amount,
+            'unspent': self.unspent
+        }

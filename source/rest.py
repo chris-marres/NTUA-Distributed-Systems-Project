@@ -47,6 +47,12 @@ from pydantic import BaseModel
 import requests
 from Crypto.PublicKey import RSA
 
+import Crypto
+import Crypto.Random
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import RSA
+from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
+
 from node import Node
 from transaction import Transaction
 import glob_variables as gb
@@ -74,46 +80,20 @@ class TransactionPacket(BaseModel):
 async def receive_transaction(transaction: TransactionPacket, request: Request):
     global node
 
-    print('debug1')
     # Parse JSON string into a dictionary
     transaction_dict = json.loads(transaction.transaction_json)
 
-    print('debug2')
-    sender_key_dict = json.loads(transaction_dict['sender_address'])
-    sender_key = RSA.construct((int(sender_key_dict['n']), int(sender_key_dict['e'])))
-    transaction_dict['sender_address'] = sender_key
+    transaction_dict['sender_address'] = json.loads(transaction_dict['sender_address'])
 
-    print('debug3')
     receiver_key_dict = json.loads(transaction_dict['receiver_address'])
     receiver_key = RSA.construct((int(receiver_key_dict['n']), int(receiver_key_dict['e'])))
     transaction_dict['receiver_address'] = receiver_key
 
-    print('debug4')
-    transaction_dict['transaction_id'] = bytes.fromhex(transaction_dict['transaction_id'])
+    transaction = Transaction(transaction_dict['sender_address'], transaction_dict['receiver_address'], transaction_dict['amount'], transaction_dict['transaction_inputs'], transaction_dict['signature'])   
+    transaction.transaction_id = transaction_dict['transaction_id']
 
-    print('debug5')
-    transaction_dict['signature'] = transaction_dict['signature'].encode('latin-1')
+    print('Received transaction')
 
-    """
-    def __init__(self, sender_address, receiver_address, value, previous_output_id, signature = ('').encode()):
-        self.sender_address = sender_address
-        self.receiver_address = receiver_address
-        self.amount = value
-        self.transaction_id = SHA256.new((str(sender_address) + str(receiver_address)+str(value)).encode())
-        # self.transaction_id_str = binascii.hexlify(self.transaction_id.digest()).decode('ascii')
-        # and convert back to SHA256 object
-        # self.transaction_id = SHA256.new(binascii.unhexlify(self.transaction_id_str))
-        # self.transaction_id_not_hex = hashlib.sha256((str(sender_address) + str(receiver_address)+str(value) + str(self.rand)).encode())
-        # self.transaction_id = self.transaction_id_not_hex.hexdigest()
-        self.transaction_inputs = previous_output_id
-        self.transaction_outputs = []
-        self.signature = signature
-    """
-
-    transaction = Transaction(transaction_dict['sender_address'], transaction_dict['receiver_address'], transaction_dict['amount'], transaction_dict['transaction_inputs'], transaction_dict['signature'])
-    transaction.transaction_id = transaction_dict['transaction_id'] 
-
-    print('debug6')
     if node.validate_transaction(transaction):
         node.add_transaction_to_block(transaction)
         return {"status": "Transaction received and validated"}
@@ -140,24 +120,17 @@ async def client_connection(client_connection: ClientConnection, request: Reques
     public_key_dict = json.loads(client_connection.public_key_json)
 
     # Create RSA public key object from dictionary
-    public_key = RSA.construct((int(public_key_dict['n']), int(public_key_dict['e'])))
+    # public_key = RSA.construct((int(public_key_dict['n']), int(public_key_dict['e'])))
 
-    node.register_node_to_ring(client_connection.id, request.client.host, client_connection.port, public_key, 0)
-
-    print("Current ring:")
-    print(node.ring)
+    node.register_node_to_ring(client_connection.id, request.client.host, client_connection.port, public_key_dict, 0)
 
     print(f"A new client connected to the network. Total clients connected: {clients_connected}")
     print(f"Client will launch a node at address: {request.client.host}:{port} with id {clients_connected} and balance 0")
 
-    node.create_transaction(public_key, 100)
-
     if len(node.ring) == gb.participants - 1:
         print("Initializing bootstrap node")
         node.id = 0
-        node.register_node_to_ring(0, "192.168.0.2", 8000, node.wallet.address, 0)
-
-        print(node.ring)        
+        node.register_node_to_ring(0, "192.168.0.2", 8000, node.wallet.address, 0)        
 
         print("Creating genesis block")
         node.create_new_block()
@@ -165,10 +138,35 @@ async def client_connection(client_connection: ClientConnection, request: Reques
         print("Create the first transaction. Money out of thin air!!")
         node.add_init_transaction()
 
-        print("Current ring:")
-        print(node.ring)
+        if node.broadcast_ring():
+            print(f'Bootstrap ring: {node.ring}')
+            print("Ring broadcasted")
+
+            # Send a transaction of 100 coins to all the clients
+            for client in node.ring.values():
+                if client['id'] != 0:
+                    node.create_transaction(client['public_key'], 100)
+        else:
+            print("Ring broadcast failed")
 
     return {"id": clients_connected, "port": port}
+
+class RingPacket(BaseModel):
+    ring_json: str
+
+@app.post("/receive_ring")
+async def receive_ring(ring: RingPacket, request: Request):
+    global node
+
+    # Parse JSON string into a dictionary
+    ring_dict = json.loads(ring.ring_json)
+
+    # Create ring object from dictionary
+    node.ring = ring_dict
+
+    print(f'Client ring: {node.ring}')
+
+    return {"status": "Ring received"}
 
 
 def client_thread_function():
@@ -179,8 +177,8 @@ def client_thread_function():
     # connect to bootstrap node
     # Export public key to a dictionary
     public_key_dict = {
-        'n': node.wallet.address.n,
-        'e': node.wallet.address.e
+        'n': node.wallet.address['n'],
+        'e': node.wallet.address['e']
     }
 
     # Convert dictionary to JSON string
