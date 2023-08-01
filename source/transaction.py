@@ -40,10 +40,10 @@ class Transaction:
         # self.transaction_id = SHA256.new(binascii.unhexlify(self.transaction_id_str))
         # self.transaction_id_not_hex = hashlib.sha256((str(sender_address) + str(receiver_address)+str(value) + str(self.rand)).encode())
         # self.transaction_id = self.transaction_id_not_hex.hexdigest()
+        self.nbc_sent = nbc_sent
         self.transaction_inputs = previous_output_id
         self.transaction_outputs = self.compute_transaction_output()
         self.signature = None
-        self.nbc_sent = nbc_sent
         
 
     # Sign transaction with private key
@@ -62,16 +62,18 @@ class Transaction:
         list_of_outputs = []
         output = {}
         output['transaction_id'] = self.transaction_id
-        output['receiver'] = self.receiver
-        output['amount'] = self.amount        
+        output['receiver_address'] = self.receiver_address
+        output['amount'] = self.amount       
+        output['unspent'] = True  
         list_of_outputs.append(output)
 
         if self.nbc_sent > self.amount:
             # If sender has sent more money than needed
             sender_output = {}
             sender_output['transaction_id'] = self.transaction_id
-            sender_output['receiver'] = self.receiver
+            sender_output['receiver_address'] = self.receiver_address
             sender_output['amount'] = self.nbc_sent - self.amount
+            sender_output['unspent'] = True  
             list_of_outputs.append(sender_output)
         return list_of_outputs        
 

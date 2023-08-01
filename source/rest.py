@@ -89,7 +89,7 @@ async def receive_transaction(transaction: TransactionPacket, request: Request):
     receiver_key = RSA.construct((int(receiver_key_dict['n']), int(receiver_key_dict['e'])))
     transaction_dict['receiver_address'] = receiver_key
 
-    transaction = Transaction(transaction_dict['sender_address'], transaction_dict['receiver_address'], transaction_dict['amount'], transaction_dict['transaction_inputs'], transaction_dict['signature'])   
+    transaction = Transaction(transaction_dict['sender_address'], transaction_dict['receiver_address'], transaction_dict['amount'], transaction_dict['transaction_inputs'], transaction_dict['signature'], transaction_dict['nbc_sent'])   
     transaction.transaction_id = transaction_dict['transaction_id']
 
     print('Received transaction')

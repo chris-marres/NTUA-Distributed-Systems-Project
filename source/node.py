@@ -71,7 +71,7 @@ class Node:
 
 		for trans in self.wallet.transactions: 		
 			for output in trans.transaction_outputs:
-				if (output['receiver']['n'] == self.wallet.address['n'] and output['unspent']):
+				if (output['receiver_address']['n'] == self.wallet.address['n'] and output['unspent']):
 					nbcs += output['amount']
 					output['unspent'] = False
 					trans_input.append(output['transaction_id'])
@@ -103,7 +103,7 @@ class Node:
 		return True
 	
 	def add_init_transaction(self):
-		trans = Transaction("0", self.wallet.address, participants * 100, [])
+		trans = Transaction("0", self.wallet.address, participants * 100, [], participants * 100)
 		
 		# add the transaction to the list of transactions of the bootstrap node
 		self.wallet.transactions.append(trans)
@@ -138,7 +138,8 @@ class Node:
 					"transaction_id": transaction.transaction_id,
 					"transaction_inputs": [item.hexdigest() for item in transaction.transaction_inputs],
 					"transaction_outputs": transaction.transaction_outputs,
-					"signature": transaction.signature
+					"signature": transaction.signature,
+					"nbc_sent": transaction.nbc_sent
 				}
 
 				obj = json.dumps(obj)
