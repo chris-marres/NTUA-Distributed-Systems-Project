@@ -1,0 +1,41 @@
+version: "3.8"
+name: "blockchain_cluster"
+
+services:
+  bootstrap:
+    container_name: bootstrap
+    restart: no
+    build: .
+    command: python rest.py bootstrap
+
+  client1:
+    container_name: client1
+    restart: no
+    build: .
+    command: python rest.py client 1
+    depends_on:
+      - bootstrap
+
+  client2:
+    container_name: client2
+    restart: no
+    build: .
+    command: python rest.py client 2
+    depends_on:
+      - bootstrap
+
+  client3:
+    container_name: client3
+    restart: no
+    build: .
+    command: python rest.py client 3
+    depends_on:
+      - bootstrap
+
+  client4:
+    container_name: client4
+    restart: no
+    build: .
+    command: python rest.py client 4
+    depends_on:
+      - bootstrap
