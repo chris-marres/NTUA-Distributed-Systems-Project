@@ -8,6 +8,7 @@ h11==0.14.0
 idna==3.4
 joblib==1.2.0
 pyasn1==0.4.8
+pycrypto==2.6.1
 pycryptodome==3.17
 pydantic==1.10.6
 python-dotenv==1.0.0
