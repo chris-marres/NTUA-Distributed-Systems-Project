@@ -7,6 +7,8 @@ services:
     restart: no
     build: .
     command: python rest.py bootstrap
+    volumes:
+      - ./source:/source
 
   client1:
     container_name: client1
@@ -15,6 +17,8 @@ services:
     command: python rest.py client 1
     depends_on:
       - bootstrap
+    volumes:
+      - ./source:/source
 
   client2:
     container_name: client2
@@ -23,6 +27,8 @@ services:
     command: python rest.py client 2
     depends_on:
       - bootstrap
+    volumes:
+      - ./source:/source
 
   client3:
     container_name: client3
@@ -31,6 +37,8 @@ services:
     command: python rest.py client 3
     depends_on:
       - bootstrap
+    volumes:
+      - ./source:/source
 
   client4:
     container_name: client4
@@ -39,3 +47,5 @@ services:
     command: python rest.py client 4
     depends_on:
       - bootstrap
+    volumes:
+      - ./source:/source

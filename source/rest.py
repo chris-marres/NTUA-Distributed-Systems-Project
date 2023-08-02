@@ -98,8 +98,8 @@ async def receive_transaction(transaction: TransactionPacket, request: Request):
         transaction_dict["receiver_address"],
         transaction_dict["amount"],
         transaction_dict["transaction_inputs"],
-        transaction_dict["signature"],
         transaction_dict["nbc_sent"],
+        transaction_dict["signature"],
     )
     transaction.transaction_id = transaction_dict["transaction_id"]
 
@@ -221,7 +221,7 @@ def main():
         print("Starting bootstrap node")
         node.id = 0
         print("Starting bootstrap node server")
-        uvicorn.run("rest:app", host="0.0.0.0", port=port, reload=True)
+        uvicorn.run(app=app, host="0.0.0.0", port=port)
 
     elif args[0] == "client":
         # start client node
@@ -241,7 +241,7 @@ def main():
 
         # start client node server
         print("Starting client node server")
-        uvicorn.run("rest:app", host="0.0.0.0", port=response["port"], reload=True)
+        uvicorn.run(app=app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":

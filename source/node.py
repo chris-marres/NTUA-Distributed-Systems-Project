@@ -20,6 +20,7 @@ import Crypto.Random
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
+from time import sleep
 
 
 from glob_variables import participants
@@ -122,7 +123,7 @@ class Node:
         # add the transaction to the list of transactions of the bootstrap node
         self.wallet.transactions.append(trans)
 
-        self.ring[self.pub_key_str]["balance"] += participants * 100
+        self.ring[self.wallet.address["n"]]["balance"] += participants * 100
 
         self.current_block.add_transaction(trans)
 
@@ -171,14 +172,14 @@ class Node:
                     return False
         return True
 
-    def validate_transaction(self, trans):
+    def validate_transaction(self, trans: Transaction):
         # check if the signature is valid
         if not trans.verify_signature():
             print("The signature is not valid")
             return False
 
         # check if sender has enough money
-        if self.ring[self.pub_key_str]["balance"] >= trans.amount:
+        if self.ring[self.wallet.address["n"]]["balance"] >= trans.amount:
             # create the 2 transaction outputs and add them in UTXOs list.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             return True
         print("There are not enough money to be spent")
@@ -319,17 +320,20 @@ class Node:
         return True
 
     def broadcast_ring(self):
+        obj = json.dumps(self.ring)
+        message = {"ring_json": obj}
+
         for node in self.ring.values():
             if node["id"] != self.id:
-                obj = json.dumps(self.ring)
-                message = {"ring_json": obj}
-
                 response = requests.post(
                     "http://" + node["ip"] + ":" + str(node["port"]) + "/receive_ring",
                     json=message,
                 )
+
                 if response.status_code != 200:
                     return False
+
+            sleep(5)
         return True
 
     def resolve_conflicts(self, new_block):
