@@ -62,8 +62,7 @@ class Node:
             self.current_block = Block(None, None)
 
     def register_node_to_ring(self, id, ip, port, public_key, balance):
-        self.pub_key_str = public_key["n"]
-        self.ring[self.pub_key_str] = {
+        self.ring[int(public_key["n"])] = {
             "id": id,
             "ip": ip,
             "port": port,
@@ -79,24 +78,24 @@ class Node:
 
         for trans in self.wallet.transactions:
             for output in trans.transaction_outputs:
+                output = output["receiver"] if output["receiver"] else output["sender"]
                 if (
                     output["receiver_address"]["n"] == self.wallet.address["n"]
                     and output["unspent"]
                 ):
                     nbcs += output["amount"]
                     output["unspent"] = False
-                    trans_input.append(output["transaction_id"])
-            if nbcs >= amount:
-                break
+                    trans_input.append(output)
+                if nbcs >= amount:
+                    break
 
         if nbcs < amount:
-            for trans in self.wallet.transactions:
-                for output in trans.transaction_outputs:
-                    output["unspent"] = True
-                print(
-                    "The sender node does not have enough money to spend for this transaction :/"
-                )
-                return False
+            for output in trans_input:
+                output["unspent"] = True
+            print(
+                "The sender node does not have enough money to spend for this transaction :/"
+            )
+            return False
 
         trans = Transaction(self.wallet.address, receiver, amount, trans_input, nbcs)
         print("Transaction created")
@@ -104,12 +103,12 @@ class Node:
         print("Transaction signed")
 
         # If broadcasting fails
+        # TODO: reduce change
         print("Broadcasting transaction")
         if not self.broadcast_transaction(trans):
-            for trans in self.wallet.transactions:
-                for output in trans.transaction_outputs:
-                    if output["transaction_id"] in trans_input:
-                        output["unspent"] = True
+            for output in trans_input:
+                output["unspent"] = True
+            print("Transaction broadcasting failed")
             return False
 
         print("Transaction broadcasted")
@@ -174,12 +173,13 @@ class Node:
 
     def validate_transaction(self, trans: Transaction):
         # check if the signature is valid
+        # trans.sender_address["n"] += 1
         if not trans.verify_signature():
             print("The signature is not valid")
             return False
 
         # check if sender has enough money
-        if self.ring[self.wallet.address["n"]]["balance"] >= trans.amount:
+        if self.ring[trans.sender_address["n"]]["balance"] >= trans.amount:
             # create the 2 transaction outputs and add them in UTXOs list.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             return True
         print("There are not enough money to be spent")
@@ -191,17 +191,18 @@ class Node:
             trans.sender_address == self.wallet.public_key
             or trans.receiver_address == self.wallet.public_key
         ):
+            print("PASSED")
             self.wallet.transactions.append(trans)
 
         # update the balance of the sender and the receiver
-        for ring_node in self.ring:
+        for ring_node in self.ring.values():
             if ring_node["public_key"] == trans.sender_address:
                 ring_node["balance"] -= trans.amount
             if ring_node["public_key"] == trans.receiver_address:
                 ring_node["balance"] += trans.amount
 
-                # If the chain contains only the genesis block, a new block
-                # is created. In other cases, the block is created after mining.
+        # If the chain contains only the genesis block, a new block
+        # is created. In other cases, the block is created after mining.
         if self.current_block is None:
             self.create_new_block()
 

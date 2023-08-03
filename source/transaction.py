@@ -36,22 +36,22 @@ class Transaction:
         self,
         sender_address,
         receiver_address,
-        value,
-        previous_output_id,
+        amount,
+        previous_outputs,
         nbc_sent,
         signature=None,
     ):
         self.sender_address = sender_address
         self.receiver_address = receiver_address
-        self.amount = value
+        self.amount = amount
         self.transaction_id = int.from_bytes(
             sha512(
-                (str(sender_address) + str(receiver_address) + str(value)).encode()
+                (str(sender_address) + str(receiver_address) + str(amount)).encode()
             ).digest(),
             byteorder="big",
         )
         self.nbc_sent = nbc_sent
-        self.transaction_inputs = previous_output_id
+        self.transaction_inputs = previous_outputs
         self.transaction_outputs = self.compute_transaction_output()
         self.signature = signature
 
@@ -71,19 +71,26 @@ class Transaction:
 
     def compute_transaction_output(self):
         list_of_outputs = []
-        output = {}
-        output["transaction_id"] = self.transaction_id
-        output["receiver_address"] = self.receiver_address
-        output["amount"] = self.amount
-        output["unspent"] = True
-        list_of_outputs.append(output)
+        list_of_outputs.append(
+            {
+                "receiver": {
+                    "transaction_id": self.transaction_id,
+                    "receiver_address": self.receiver_address,
+                    "amount": self.amount,
+                    "unspent": True,
+                }
+            }
+        )
 
         if self.nbc_sent > self.amount:
-            # If sender has sent more money than needed
-            sender_output = {}
-            sender_output["transaction_id"] = self.transaction_id
-            sender_output["receiver_address"] = self.receiver_address
-            sender_output["amount"] = self.nbc_sent - self.amount
-            sender_output["unspent"] = True
-            list_of_outputs.append(sender_output)
+            list_of_outputs.append(
+                {
+                    "sender": {
+                        "transaction_id": self.transaction_id,
+                        "receiver_address": self.sender_address,
+                        "amount": self.nbc_sent - self.amount,
+                        "unspent": True,
+                    }
+                }
+            )
         return list_of_outputs

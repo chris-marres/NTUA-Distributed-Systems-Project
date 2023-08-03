@@ -85,13 +85,14 @@ async def receive_transaction(transaction: TransactionPacket, request: Request):
     # Parse JSON string into a dictionary
     transaction_dict = json.loads(transaction.transaction_json)
 
-    transaction_dict["sender_address"] = json.loads(transaction_dict["sender_address"])
-
-    receiver_key_dict = json.loads(transaction_dict["receiver_address"])
-    receiver_key = RSA.construct(
-        (int(receiver_key_dict["n"]), int(receiver_key_dict["e"]))
-    )
-    transaction_dict["receiver_address"] = receiver_key
+    transaction_dict["sender_address"] = {
+        key: int(value)
+        for key, value in json.loads(transaction_dict["sender_address"]).items()
+    }
+    transaction_dict["receiver_address"] = {
+        key: int(value)
+        for key, value in json.loads(transaction_dict["receiver_address"]).items()
+    }
 
     transaction = Transaction(
         transaction_dict["sender_address"],
@@ -131,9 +132,6 @@ async def client_connection(client_connection: ClientConnection, request: Reques
     # Parse JSON string into a dictionary
     public_key_dict = json.loads(client_connection.public_key_json)
 
-    # Create RSA public key object from dictionary
-    # public_key = RSA.construct((int(public_key_dict['n']), int(public_key_dict['e'])))
-
     node.register_node_to_ring(
         client_connection.id,
         f"client{client_connection.id}",
@@ -158,9 +156,6 @@ async def client_connection(client_connection: ClientConnection, request: Reques
         node.add_init_transaction()
 
         if node.broadcast_ring():
-            print(f"Bootstrap ring: {node.ring}")
-            print("Ring broadcasted")
-
             # Send a transaction of 100 coins to all the clients
             for client in node.ring.values():
                 if client["id"] != 0:
@@ -183,9 +178,7 @@ async def receive_ring(ring: RingPacket, request: Request):
     ring_dict = json.loads(ring.ring_json)
 
     # Create ring object from dictionary
-    node.ring = ring_dict
-
-    print(f"Client ring: {node.ring}")
+    node.ring = {int(key): value for key, value in ring_dict.items()}
 
     return {"status": "Ring received"}
 
