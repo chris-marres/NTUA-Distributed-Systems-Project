@@ -163,6 +163,8 @@ async def client_connection(client_connection: ClientConnection, request: Reques
         else:
             print("Ring broadcast failed")
 
+        print(node.ring)
+
     return {"id": client_connection.id, "port": client_connection.port}
 
 
@@ -187,7 +189,7 @@ def client_thread_function():
     global node
     global port
 
-    time.sleep(8)
+    time.sleep(5)
     # connect to bootstrap node
     # Export public key to a dictionary
     public_key_dict = {"n": node.wallet.address["n"], "e": node.wallet.address["e"]}
@@ -201,6 +203,13 @@ def client_thread_function():
     # Send public_key_json over the network
     response = requests.post("http://bootstrap:8000/client_connection", json=obj).json()
     print(response)
+
+
+@app.get("/balance")
+async def balance():
+    global node
+
+    return {"balance": node.wallet.balance}
 
 
 def main():

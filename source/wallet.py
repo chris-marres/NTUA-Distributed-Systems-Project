@@ -27,20 +27,15 @@ class Wallet:
         self.address = self.public_key
         self.transactions = []
 
+    @property
     def balance(self):
         total_amount = 0
         for trans in self.transactions:
             for output in trans.transaction_outputs:
                 if (
-                    output["receiver"]["receiver_address"]["n"] == self.address["n"]
-                    and output["receiver"]["unspent"]
+                    output["receiver_address"]["n"] == self.address["n"]
+                    and output["unspent"]
                 ):
-                    total_amount += output["receiver"]["amount"]
-
-                if (
-                    output["sender"]["receiver_address"]["n"] == self.address["n"]
-                    and output["sender"]["unspent"]
-                ):
-                    total_amount += output["sender"]["amount"]
+                    total_amount += output["amount"]
 
         return total_amount

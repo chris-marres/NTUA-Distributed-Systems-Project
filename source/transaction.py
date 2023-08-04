@@ -73,24 +73,22 @@ class Transaction:
         list_of_outputs = []
         list_of_outputs.append(
             {
-                "receiver": {
-                    "transaction_id": self.transaction_id,
-                    "receiver_address": self.receiver_address,
-                    "amount": self.amount,
-                    "unspent": True,
-                }
+                # receiver
+                "transaction_id": self.transaction_id,
+                "receiver_address": self.receiver_address,
+                "amount": self.amount,
+                "unspent": True,
             }
         )
 
         if self.nbc_sent > self.amount:
             list_of_outputs.append(
                 {
-                    "sender": {
-                        "transaction_id": self.transaction_id,
-                        "receiver_address": self.sender_address,
-                        "amount": self.nbc_sent - self.amount,
-                        "unspent": True,
-                    }
+                    # sender
+                    "transaction_id": self.transaction_id,
+                    "receiver_address": self.sender_address,
+                    "amount": self.nbc_sent - self.amount,
+                    "unspent": True,
                 }
             )
         return list_of_outputs

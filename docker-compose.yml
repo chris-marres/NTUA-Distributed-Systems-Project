@@ -9,6 +9,8 @@ services:
     command: python rest.py bootstrap
     volumes:
       - ./source:/source
+    ports:
+      - "8000:8000"
 
   client1:
     container_name: client1
@@ -19,6 +21,8 @@ services:
       - bootstrap
     volumes:
       - ./source:/source
+    ports:
+      - "8001:8001"
 
   client2:
     container_name: client2
@@ -29,6 +33,8 @@ services:
       - bootstrap
     volumes:
       - ./source:/source
+    ports:
+      - "8002:8002"
 
   client3:
     container_name: client3
@@ -39,6 +45,8 @@ services:
       - bootstrap
     volumes:
       - ./source:/source
+    ports:
+      - "8003:8003"
 
   client4:
     container_name: client4
@@ -49,3 +57,5 @@ services:
       - bootstrap
     volumes:
       - ./source:/source
+    ports:
+      - "8004:8004"

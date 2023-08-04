@@ -78,7 +78,6 @@ class Node:
 
         for trans in self.wallet.transactions:
             for output in trans.transaction_outputs:
-                output = output["receiver"] if output["receiver"] else output["sender"]
                 if (
                     output["receiver_address"]["n"] == self.wallet.address["n"]
                     and output["unspent"]
@@ -112,19 +111,16 @@ class Node:
             return False
 
         print("Transaction broadcasted")
+
+        self.add_transaction_to_block(trans)
+
         return True
 
     def add_init_transaction(self):
         trans = Transaction(
             "0", self.wallet.address, participants * 100, [], participants * 100
         )
-
-        # add the transaction to the list of transactions of the bootstrap node
-        self.wallet.transactions.append(trans)
-
-        self.ring[self.wallet.address["n"]]["balance"] += participants * 100
-
-        self.current_block.add_transaction(trans)
+        self.add_transaction_to_block(trans)
 
         return True
 
@@ -173,7 +169,6 @@ class Node:
 
     def validate_transaction(self, trans: Transaction):
         # check if the signature is valid
-        # trans.sender_address["n"] += 1
         if not trans.verify_signature():
             print("The signature is not valid")
             return False
@@ -191,7 +186,6 @@ class Node:
             trans.sender_address == self.wallet.public_key
             or trans.receiver_address == self.wallet.public_key
         ):
-            print("PASSED")
             self.wallet.transactions.append(trans)
 
         # update the balance of the sender and the receiver
