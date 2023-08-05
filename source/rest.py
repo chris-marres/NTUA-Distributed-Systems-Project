@@ -1,63 +1,16 @@
-"""
-import block
-import node
-import wallet
-import transaction
-import wallet
-
-
-import blockchain
-blockchain = Blockchain()
-
-#.......................................................................................
-
-# get all transactions in the blockchain
-
-@app.route('/transactions/get', methods=['GET'])
-def get_transactions():
-    transactions = blockchain.transactions
-
-    response = {'transactions': transactions}
-    return jsonify(response), 200
-
-
-
-# run it once for every node
-
-if __name__ == '__main__':
-    from argparse import ArgumentParser
-
-    parser = ArgumentParser()
-    parser.add_argument('-p', '--port', default=5000, type=int, help='port to listen on')
-    args = parser.parse_args()
-    port = args.port
-
-    app.run(host='127.0.0.1', port=port)
-"""
-
-import os
-import sys
 import json
-import binascii
+import sys
+import threading
+import time
 
+import glob_variables as gb
+import requests
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, HTTPException
-from pydantic import BaseModel
-import requests
-from Crypto.PublicKey import RSA
-
-import Crypto
-import Crypto.Random
-from Crypto.Hash import SHA256
-from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
-
+from fastapi import FastAPI, HTTPException, Request
 from node import Node
+from pydantic import BaseModel
 from transaction import Transaction
-import glob_variables as gb
-
-import time
-import threading
 
 load_dotenv(".env")
 
@@ -91,7 +44,9 @@ async def receive_transaction(transaction: TransactionPacket, request: Request):
     }
     transaction_dict["receiver_address"] = {
         key: int(value)
-        for key, value in json.loads(transaction_dict["receiver_address"]).items()
+        for key, value in json.loads(
+            transaction_dict["receiver_address"]
+        ).items()
     }
 
     transaction = Transaction(
@@ -125,7 +80,9 @@ async def get_next_available_port_and_id():
 
 
 @app.post("/client_connection")
-async def client_connection(client_connection: ClientConnection, request: Request):
+async def client_connection(
+    client_connection: ClientConnection, request: Request
+):
     global node
 
     # Receive public_key_json from the network
@@ -163,8 +120,6 @@ async def client_connection(client_connection: ClientConnection, request: Reques
         else:
             print("Ring broadcast failed")
 
-        print(node.ring)
-
     return {"id": client_connection.id, "port": client_connection.port}
 
 
@@ -192,7 +147,10 @@ def client_thread_function():
     time.sleep(5)
     # connect to bootstrap node
     # Export public key to a dictionary
-    public_key_dict = {"n": node.wallet.address["n"], "e": node.wallet.address["e"]}
+    public_key_dict = {
+        "n": node.wallet.address["n"],
+        "e": node.wallet.address["e"],
+    }
 
     # Convert dictionary to JSON string
     public_key_json = json.dumps(public_key_dict)
@@ -201,7 +159,9 @@ def client_thread_function():
     obj = {"public_key_json": public_key_json, "port": port, "id": node.id}
 
     # Send public_key_json over the network
-    response = requests.post("http://bootstrap:8000/client_connection", json=obj).json()
+    response = requests.post(
+        "http://bootstrap:8000/client_connection", json=obj
+    ).json()
     print(response)
 
 
@@ -210,6 +170,14 @@ async def balance():
     global node
 
     return {"balance": node.wallet.balance}
+
+
+@app.get("/start")
+async def start():
+    with open(f"/transactions/transactions_{node.id}.txt", "r") as infile:
+        lines = infile.readlines()
+        for line in lines:
+            print(line)
 
 
 def main():

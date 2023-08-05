@@ -1,3 +1,3 @@
-capacity = 5
+capacity = 1
 participants = 5
-mining_difficulty = 10
+mining_difficulty = 4

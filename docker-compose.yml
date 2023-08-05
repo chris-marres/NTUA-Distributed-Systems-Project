@@ -9,6 +9,7 @@ services:
     command: python rest.py bootstrap
     volumes:
       - ./source:/source
+      - ./transactions/5nodes/transactions0.txt:/transactions/transactions.txt
     ports:
       - "8000:8000"
 
@@ -21,6 +22,7 @@ services:
       - bootstrap
     volumes:
       - ./source:/source
+      - ./transactions/5nodes/transactions1.txt:/transactions/transactions.txt
     ports:
       - "8001:8001"
 
@@ -33,6 +35,7 @@ services:
       - bootstrap
     volumes:
       - ./source:/source
+      - ./transactions/5nodes/transactions2.txt:/transactions/transactions.txt
     ports:
       - "8002:8002"
 
@@ -45,6 +48,7 @@ services:
       - bootstrap
     volumes:
       - ./source:/source
+      - ./transactions/5nodes/transactions3.txt:/transactions/transactions.txt
     ports:
       - "8003:8003"
 
@@ -57,5 +61,6 @@ services:
       - bootstrap
     volumes:
       - ./source:/source
+      - ./transactions/5nodes/transactions4.txt:/transactions/transactions.txt
     ports:
       - "8004:8004"

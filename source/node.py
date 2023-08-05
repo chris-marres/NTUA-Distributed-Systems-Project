@@ -1,31 +1,25 @@
-from block import Block
-from wallet import Wallet
-from transaction import Transaction
-from blockchain import Blockchain
-import glob_variables
+import binascii
 import itertools
-
-from threading import Lock, Thread
-from collections import deque
-from copy import deepcopy
-from Crypto.PublicKey import RSA
-
-import requests
 import json
 import pickle
-import binascii
+from collections import deque
+from copy import deepcopy
+from threading import Lock, Thread
+from time import sleep
 
 import Crypto
 import Crypto.Random
+import glob_variables
+import requests
+from block import Block
+from blockchain import Blockchain
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
-from time import sleep
-
-
 from glob_variables import participants
-
 from pydantic import BaseModel
+from transaction import Transaction
+from wallet import Wallet
 
 
 class TransactionPacket(BaseModel):
@@ -96,7 +90,9 @@ class Node:
             )
             return False
 
-        trans = Transaction(self.wallet.address, receiver, amount, trans_input, nbcs)
+        trans = Transaction(
+            self.wallet.address, receiver, amount, trans_input, nbcs
+        )
         print("Transaction created")
         trans.sign_transaction(self.wallet.private_key)
         print("Transaction signed")
@@ -198,11 +194,15 @@ class Node:
         # If the chain contains only the genesis block, a new block
         # is created. In other cases, the block is created after mining.
         if self.current_block is None:
+            print("current block is None, creating new block")
             self.create_new_block()
 
         self.block_lock.acquire()
         # if after adding this transaction, block is not yet full
-        if not self.current_block.add_transaction(trans):
+        if (
+            not self.current_block.add_transaction(trans)
+            and trans.sender_address != "0"
+        ):
             self.block_lock.release()
             return
         # if block is now full, start the mining procedure
@@ -224,10 +224,10 @@ class Node:
                     return
         self.broadcast_block(mined_block)
 
-    def mine_block(self, block):
+    def mine_block(self, block: Block):
         block.nonce = 0
-        block.index = self.chain.blocks[-1].index + 1
-        block.previous_hash = self.chain.blocks[-1].current_hash
+        block.index = self.chain.get_next_index()
+        block.previous_hash = self.chain.get_previous_hash()
         computed_hash = block.get_hash()
         while (
             not computed_hash.startswith("0" * glob_variables.mining_difficulty)
@@ -239,7 +239,8 @@ class Node:
 
         return not self.stop_mining
 
-    # def broadcast_block(self):
+    def broadcast_block(self, block):
+        print(block.current_hash)
 
     def validate_block(self, block):
         return block.previous_hash == self.chain.blocks[-1].current_hash and (
@@ -264,7 +265,10 @@ class Node:
         with self.block_lock:
             total_transactions = list(
                 itertools.chain.from_iterable(
-                    [unc_block.transactions for unc_block in self.unconfirmed_blocks]
+                    [
+                        unc_block.transactions
+                        for unc_block in self.unconfirmed_blocks
+                    ]
                 )
             )
             if self.current_block:
@@ -277,13 +281,19 @@ class Node:
             ]
             final_idx = 0
             if not self.unconfirmed_blocks:
-                self.current_block.transactions = deepcopy(filtered_transactions)
+                self.current_block.transactions = deepcopy(
+                    filtered_transactions
+                )
                 return
             i = 0
-            while (i + 1) * glob_variables.capacity <= len(filtered_transactions):
+            while (i + 1) * glob_variables.capacity <= len(
+                filtered_transactions
+            ):
                 self.unconfirmed_blocks[i].transactions = deepcopy(
                     filtered_transactions[
-                        i * glob_variables.capacity : (i + 1) * glob_variables.capacity
+                        i
+                        * glob_variables.capacity : (i + 1)
+                        * glob_variables.capacity
                     ]
                 )
                 i += 1
@@ -306,7 +316,9 @@ class Node:
                 ):
                     return False
             else:
-                valid_current_hash = blocks[i].current_hash == blocks[i].get_hash()
+                valid_current_hash = (
+                    blocks[i].current_hash == blocks[i].get_hash()
+                )
                 valid_previous_hash = (
                     blocks[i].previous_hash == blocks[i - 1].current_hash
                 )
@@ -321,7 +333,11 @@ class Node:
         for node in self.ring.values():
             if node["id"] != self.id:
                 response = requests.post(
-                    "http://" + node["ip"] + ":" + str(node["port"]) + "/receive_ring",
+                    "http://"
+                    + node["ip"]
+                    + ":"
+                    + str(node["port"])
+                    + "/receive_ring",
                     json=message,
                 )
 
