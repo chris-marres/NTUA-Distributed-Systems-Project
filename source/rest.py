@@ -6,11 +6,11 @@ import time
 import glob_variables as gb
 import requests
 import uvicorn
+from converters import convert_json_to_block, convert_json_to_transaction
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from node import Node
-from pydantic import BaseModel
-from transaction import Transaction
+from schema import BlockPacket, ClientConnection, RingPacket, TransactionPacket
 
 load_dotenv(".env")
 
@@ -21,45 +21,26 @@ clients_connected = 0
 node = Node()
 
 
-class ClientConnection(BaseModel):
-    public_key_json: str
-    port: int
-    id: int
+@app.post("/receive_block")
+async def receive_block(block_packet: BlockPacket):
+    global node
 
+    block = convert_json_to_block(block_packet)
 
-class TransactionPacket(BaseModel):
-    transaction_json: str
+    print("Received block", flush=True)
+
+    print(block)
+
+    return {"status": "Block received"}
 
 
 @app.post("/receive_transaction")
-async def receive_transaction(transaction: TransactionPacket, request: Request):
+async def receive_transaction(transaction_packet: TransactionPacket):
     global node
 
-    # Parse JSON string into a dictionary
-    transaction_dict = json.loads(transaction.transaction_json)
+    transaction = convert_json_to_transaction(transaction_packet)
 
-    transaction_dict["sender_address"] = {
-        key: int(value)
-        for key, value in json.loads(transaction_dict["sender_address"]).items()
-    }
-    transaction_dict["receiver_address"] = {
-        key: int(value)
-        for key, value in json.loads(
-            transaction_dict["receiver_address"]
-        ).items()
-    }
-
-    transaction = Transaction(
-        transaction_dict["sender_address"],
-        transaction_dict["receiver_address"],
-        transaction_dict["amount"],
-        transaction_dict["transaction_inputs"],
-        transaction_dict["nbc_sent"],
-        transaction_dict["signature"],
-    )
-    transaction.transaction_id = transaction_dict["transaction_id"]
-
-    print("Received transaction")
+    print("Received transaction", flush=True)
 
     if node.validate_transaction(transaction):
         node.add_transaction_to_block(transaction)
@@ -102,14 +83,13 @@ async def client_connection(
     )
 
     if len(node.ring) == gb.participants - 1:
-        print("Initializing bootstrap node")
+        print("Initializing bootstrap node", flush=True)
         node.id = 0
         node.register_node_to_ring(0, "bootstrap", 8000, node.wallet.address, 0)
 
-        print("Creating genesis block")
-        node.create_new_block()
-
-        print("Create the first transaction. Money out of thin air!!")
+        print(
+            "Create the first transaction. Money out of thin air!!", flush=True
+        )
         node.add_init_transaction()
 
         if node.broadcast_ring():
@@ -118,13 +98,9 @@ async def client_connection(
                 if client["id"] != 0:
                     node.create_transaction(client["public_key"], 100)
         else:
-            print("Ring broadcast failed")
+            print("Ring broadcast failed", flush=True)
 
     return {"id": client_connection.id, "port": client_connection.port}
-
-
-class RingPacket(BaseModel):
-    ring_json: str
 
 
 @app.post("/receive_ring")
@@ -162,7 +138,7 @@ def client_thread_function():
     response = requests.post(
         "http://bootstrap:8000/client_connection", json=obj
     ).json()
-    print(response)
+    print(response, flush=True)
 
 
 @app.get("/balance")
@@ -174,10 +150,10 @@ async def balance():
 
 @app.get("/start")
 async def start():
-    with open(f"/transactions/transactions_{node.id}.txt", "r") as infile:
+    with open("/transactions/transactions.txt", "r") as infile:
         lines = infile.readlines()
         for line in lines:
-            print(line)
+            print(line, flush=True)
 
 
 def main():
@@ -185,17 +161,17 @@ def main():
     global port
 
     args = sys.argv[1:]
-    print(args)
+    print(args, flush=True)
 
     if args[0] == "bootstrap":
-        print("Starting bootstrap node")
+        print("Starting bootstrap node", flush=True)
         node.id = 0
-        print("Starting bootstrap node server")
+        print("Starting bootstrap node server", flush=True)
         uvicorn.run(app=app, host="0.0.0.0", port=port)
 
     elif args[0] == "client":
         # start client node
-        print("Starting client node")
+        print("Starting client node", flush=True)
 
         time.sleep(3 * int(args[1]))
         # get next available port and id
@@ -210,7 +186,7 @@ def main():
         x.start()
 
         # start client node server
-        print("Starting client node server")
+        print("Starting client node server", flush=True)
         uvicorn.run(app=app, host="0.0.0.0", port=port)
 
 

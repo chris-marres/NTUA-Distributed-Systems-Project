@@ -1,7 +1,7 @@
 import hashlib
 import time
 
-import glob_variables
+import glob_variables as gb
 
 
 class Block:
@@ -11,20 +11,20 @@ class Block:
     Each block contains the attributes below:
         id: the sequence number (int) of the block.
         timestamp: timestamp (float) of the creation of the block.
-        listOfTransactions: list of all the transactions in the block.
+        list_of_transactions: list of all the transactions in the block.
         nonce: the solution (int) of proof-of-work.
                 current_hash: the hash of the block.
         previousHash: the hash of the previous block in the blockchain.
     """
 
     # Create block
-    def __init__(self, index, prevHash):
-        self.index = index
+    def __init__(self):
+        self.index = None
         self.timestamp = time.time()
-        self.listOfTransactions = []
-        self.nonce = None
+        self.list_of_transactions = []
+        self.nonce = 0
         self.current_hash = None
-        self.previous_hash = prevHash
+        self.previous_hash = None
 
     # Calculate the hash of the current block (self.hash)
     def get_hash(self):
@@ -33,7 +33,7 @@ class Block:
             [
                 self.timestamp,
                 self.previous_hash,
-                [trans.transaction_id for trans in self.listOfTransactions],
+                [trans.transaction_id for trans in self.list_of_transactions],
                 self.nonce,
             ]
         ).encode()
@@ -47,15 +47,15 @@ class Block:
 
     # Add a transaction to the block
     def add_transaction(self, transaction):
-        length = len(self.listOfTransactions)
+        length = len(self.list_of_transactions)
 
         # After the addition of that transaction, the block will be full
-        if length == (glob_variables.capacity - 1):
-            self.listOfTransactions.append(transaction)
+        if length == (gb.capacity - 1):
+            self.list_of_transactions.append(transaction)
             return True
 
         # The block is already full
-        elif length == glob_variables.capacity:
+        elif length == gb.capacity:
             print(
                 "The block is already full and no more transactions could be added"
             )

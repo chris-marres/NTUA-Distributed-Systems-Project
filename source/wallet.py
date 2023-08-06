@@ -1,6 +1,4 @@
-from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
-from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
 
 
 class Wallet:

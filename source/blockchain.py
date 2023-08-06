@@ -20,4 +20,4 @@ class Blockchain:
         if len(self.blocks) != 0:
             return self.blocks[-1].current_hash
         else:
-            return 1
+            return "1"
