@@ -1,3 +1,5 @@
-capacity = 1
-participants = 5
-mining_difficulty = 4
+import os
+
+capacity = int(os.getenv("CAPACITY"))
+participants = int(os.getenv("PARTICIPANTS"))
+mining_difficulty = int(os.getenv("DIFFICULTY"))

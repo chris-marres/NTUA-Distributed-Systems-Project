@@ -14,11 +14,6 @@ from transaction import Transaction
 from wallet import Wallet
 
 
-def run_asynchronously(func, *args):
-    thread = Thread(target=func, args=args)
-    thread.start()
-
-
 class Node:
     def __init__(self):
         self.id = None
@@ -77,7 +72,7 @@ class Node:
         print("Transaction signed", flush=True)
 
         print("Broadcasting transaction", flush=True)
-        run_asynchronously(self.broadcast_transaction, trans)
+        self.broadcast_transaction(trans)
         print("Transaction broadcasted", flush=True)
 
         self.add_transaction_to_block(trans)
@@ -170,7 +165,8 @@ class Node:
             # TODO:
             pass
         else:
-            run_asynchronously(self.broadcast_block, mined_block)
+            self.chain.add_block(mined_block)
+            self.broadcast_block(mined_block)
 
     def mine_block(self, block: Block):
         block.index = self.chain.get_next_index()
@@ -203,21 +199,23 @@ class Node:
                 )
 
     def validate_block(self, block):
-        return block.previous_hash == self.chain.blocks[-1].current_hash and (
-            block.current_hash == block.get_hash()
-        )
+        # return block.previous_hash == self.chain.blocks[-1].current_hash and (
+        #     block.current_hash == block.get_hash()
+        # )
 
-    """	if not block.current_hash == block.get_hash():
-			print('The current hash of this block is not correct', flush=True)
-			return False
-		if new_block:
-			if not block.previousHash == self.chain.blocks[-1].current_hash:
-				print ('The previous block hash is differnet. There should be a conflict')
-				return False
-			return True	
-		else: 
-			pass
-	"""
+        if not block.current_hash == block.get_hash():
+            print("The current hash of this block is not correct", flush=True)
+            return False
+        if not block.previous_hash == self.chain.blocks[-1].current_hash:
+            print(
+                "The previous block hash is different. There should be a",
+                "conflict",
+            )
+            return False
+
+        self.chain.add_block(block)
+
+        return True
 
     # consensus functions
 
@@ -300,7 +298,7 @@ class Node:
                 if response.status_code != 200:
                     return False
 
-            sleep(5)
+        sleep(5)
         return True
 
     def resolve_conflicts(self, new_block):

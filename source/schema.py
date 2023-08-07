@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 
 class ClientConnection(BaseModel):
-    public_key_json: str
+    public_key: dict[str, int]
     port: int
     id: int
 
