@@ -24,13 +24,14 @@ def receive_block(block_packet: BlockPacket):
 
     block = convert_json_to_block(block_packet)
 
-    if block.previous_hash != 1:
+    if node.validate_block(block):
         node.stop_mining = True
-        node.validate_block(block)
-    else:
-        node.chain.add_block(block)
+        # remove double transactions from current block
+        node.stop_mining = False
 
-    return {"status": "Block received"}
+        return {"status": "Block received and validated"}
+
+    raise HTTPException(status_code=400, detail="Block is not valid")
 
 
 @app.post("/receive_transaction")
@@ -43,7 +44,7 @@ def receive_transaction(transaction_packet: TransactionPacket):
         node.add_transaction_to_block(transaction)
         return {"status": "Transaction received and validated"}
     else:
-        return HTTPException(status_code=400, detail="Transaction is not valid")
+        raise HTTPException(status_code=400, detail="Transaction is not valid")
 
 
 @app.get("/get_next_available_port_and_id")
@@ -143,6 +144,13 @@ def start():
         lines = infile.readlines()
         for line in lines:
             print(line, flush=True)
+
+
+@app.get("/test")
+def test():
+    global node
+
+    return node.chain.__dict__
 
 
 def main():

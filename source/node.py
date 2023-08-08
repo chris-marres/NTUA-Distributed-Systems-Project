@@ -14,6 +14,11 @@ from transaction import Transaction
 from wallet import Wallet
 
 
+def run_asynchronously(func, *args):
+    thread = Thread(target=func, args=args)
+    thread.start()
+
+
 class Node:
     def __init__(self):
         self.id = None
@@ -72,7 +77,7 @@ class Node:
         print("Transaction signed", flush=True)
 
         print("Broadcasting transaction", flush=True)
-        self.broadcast_transaction(trans)
+        run_asynchronously(self.broadcast_transaction, trans)
         print("Transaction broadcasted", flush=True)
 
         self.add_transaction_to_block(trans)
@@ -150,6 +155,7 @@ class Node:
         self.current_block = Block()
         self.block_lock.release()
         while True:
+            print("Waiting for mining to finish", flush=True)
             with self.filter_lock:
                 if self.unconfirmed_blocks:
                     mined_block = self.unconfirmed_blocks.popleft()
@@ -165,19 +171,21 @@ class Node:
             # TODO:
             pass
         else:
-            self.chain.add_block(mined_block)
-            self.broadcast_block(mined_block)
+            if self.broadcast_block(mined_block):
+                self.chain.add_block(mined_block)
 
     def mine_block(self, block: Block):
         block.index = self.chain.get_next_index()
         block.previous_hash = self.chain.get_previous_hash()
         computed_hash = block.get_hash()
-        while (
-            not computed_hash.startswith("0" * gb.mining_difficulty)
-            and not self.stop_mining
-        ):
-            block.nonce += 1
-            computed_hash = block.get_hash()
+
+        if block.list_of_transactions[0].sender_address != "0":
+            while (
+                not computed_hash.startswith("0" * gb.mining_difficulty)
+                and not self.stop_mining
+            ):
+                block.nonce += 1
+                computed_hash = block.get_hash()
         block.current_hash = computed_hash
 
         return True
@@ -185,11 +193,12 @@ class Node:
     def broadcast_block(self, block):
         print(block.current_hash, flush=True)
 
+        good = False
         for node in self.ring.values():
             if node["id"] != self.id:
                 block_packet = convert_block_to_json(block)
 
-                requests.post(
+                response = requests.post(
                     "http://"
                     + node["ip"]
                     + ":"
@@ -197,24 +206,27 @@ class Node:
                     + "/receive_block",
                     json=block_packet.serialized,
                 )
+                if response.status_code == 200:
+                    good = True
 
-    def validate_block(self, block):
-        # return block.previous_hash == self.chain.blocks[-1].current_hash and (
-        #     block.current_hash == block.get_hash()
-        # )
+        return good
 
-        if not block.current_hash == block.get_hash():
-            print("The current hash of this block is not correct", flush=True)
-            return False
-        if not block.previous_hash == self.chain.blocks[-1].current_hash:
-            print(
-                "The previous block hash is different. There should be a",
-                "conflict",
-            )
-            return False
+    def validate_block(self, block: Block):
+        if block.previous_hash != "1":
+            if not block.current_hash == block.get_hash():
+                print(
+                    "The current hash of this block is not correct", flush=True
+                )
+                return False
+
+            if not block.previous_hash == self.chain.blocks[-1].current_hash:
+                print(
+                    "The previous block hash is different. There should be a",
+                    "conflict",
+                )
+                return False
 
         self.chain.add_block(block)
-
         return True
 
     # consensus functions
