@@ -25,9 +25,10 @@ def receive_block(block_packet: BlockPacket):
     block = convert_json_to_block(block_packet)
 
     if node.validate_block(block):
-        node.stop_mining = True
+        if node.im_mining:
+            print("\n###################KAPPA###################\n", flush=True)
+            node.stop_mining = True
         # remove double transactions from current block
-        node.stop_mining = False
 
         return {"status": "Block received and validated"}
 

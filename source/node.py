@@ -14,8 +14,13 @@ from transaction import Transaction
 from wallet import Wallet
 
 
-def run_asynchronously(func, *args):
+def run_async(func, *args):
     thread = Thread(target=func, args=args)
+    thread.start()
+
+
+def post_async(**kwargs):
+    thread = Thread(target=requests.post, kwargs=kwargs)
     thread.start()
 
 
@@ -33,6 +38,7 @@ class Node:
         self.chain_lock = Lock()
         self.block_lock = Lock()
         self.stop_mining = False
+        self.im_mining = False
 
     def register_node_to_ring(self, id, ip, port, public_key, balance):
         self.ring[int(public_key["n"])] = {
@@ -77,7 +83,7 @@ class Node:
         print("Transaction signed", flush=True)
 
         print("Broadcasting transaction", flush=True)
-        run_asynchronously(self.broadcast_transaction, trans)
+        run_async(self.broadcast_transaction, trans)
         print("Transaction broadcasted", flush=True)
 
         self.add_transaction_to_block(trans)
@@ -103,12 +109,14 @@ class Node:
             if node["id"] != self.id:
                 transaction_packet = convert_transaction_to_json(transaction)
 
-                requests.post(
-                    "http://"
-                    + node["ip"]
-                    + ":"
-                    + str(node["port"])
-                    + "/receive_transaction",
+                post_async(
+                    url=(
+                        "http://"
+                        + node["ip"]
+                        + ":"
+                        + str(node["port"])
+                        + "/receive_transaction"
+                    ),
                     json=transaction_packet.serialized,
                 )
 
@@ -150,6 +158,7 @@ class Node:
             return
         # if block is now full, start the mining procedure
 
+        self.im_mining = True
         # First, add the current block in the queue of unconfirmed blocks
         self.unconfirmed_blocks.append(deepcopy(self.current_block))
         self.current_block = Block()
@@ -161,18 +170,22 @@ class Node:
                     mined_block = self.unconfirmed_blocks.popleft()
                     mining_result = self.mine_block(mined_block)
                     if mining_result:
+                        # TODO: If mining stops from stop_mining, we
+                        # need to keep the current block, not throw it
+                        # away
                         break
                     else:
                         self.unconfirmed_blocks.appendleft(mined_block)
                 else:
                     return
+        self.im_mining = False
 
         if self.stop_mining:
             # TODO:
-            pass
+            self.stop_mining = False
         else:
             if self.broadcast_block(mined_block):
-                self.chain.add_block(mined_block)
+                self.validate_block(mined_block)
 
     def mine_block(self, block: Block):
         block.index = self.chain.get_next_index()
