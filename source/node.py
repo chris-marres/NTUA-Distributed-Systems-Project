@@ -2,6 +2,7 @@ import itertools
 import json
 from collections import deque
 from copy import deepcopy
+from queue import Queue
 from threading import Lock, Thread
 from time import sleep
 
@@ -170,22 +171,24 @@ class Node:
                     mined_block = self.unconfirmed_blocks.popleft()
                     mining_result = self.mine_block(mined_block)
                     if mining_result:
-                        # TODO: If mining stops from stop_mining, we
-                        # need to keep the current block, not throw it
-                        # away
-                        break
+                        if self.stop_mining:
+                            self.unconfirmed_blocks.appendleft(mined_block)
+                        else:
+                            break
                     else:
                         self.unconfirmed_blocks.appendleft(mined_block)
                 else:
                     return
         self.im_mining = False
 
-        if self.stop_mining:
-            # TODO:
-            self.stop_mining = False
-        else:
-            if self.broadcast_block(mined_block):
-                self.validate_block(mined_block)
+        # if self.stop_mining:
+        #     self.stop_mining = False
+        # else:
+        #     if self.broadcast_block(mined_block):
+        #         self.validate_block(mined_block)
+        if not self.stop_mining:
+            self.broadcast_block(mined_block)
+            self.validate_block(mined_block)
 
     def mine_block(self, block: Block):
         block.index = self.chain.get_next_index()
@@ -206,23 +209,39 @@ class Node:
     def broadcast_block(self, block):
         print(block.current_hash, flush=True)
 
-        good = False
+        def post_block(queue, url, json):
+            response = requests.post(url=url, json=json)
+            queue.put(response)
+
+        json_block = convert_block_to_json(block).serialized
+
+        response_queue = Queue()
+        threads = []
         for node in self.ring.values():
-            if node["id"] != self.id:
-                block_packet = convert_block_to_json(block)
+            if node["id"] == self.id:
+                continue
+            thread = Thread(
+                target=post_block,
+                args=(
+                    response_queue,
+                    f"http://{node['ip']}:{str(node['port'])}/receive_block",
+                    json_block,
+                ),
+            )
+            threads.append(thread)
+            thread.start()
 
-                response = requests.post(
-                    "http://"
-                    + node["ip"]
-                    + ":"
-                    + str(node["port"])
-                    + "/receive_block",
-                    json=block_packet.serialized,
-                )
-                if response.status_code == 200:
-                    good = True
+        for thread in threads:
+            thread.join()
 
-        return good
+        responses = []
+        while not response_queue.empty():
+            responses.append(response_queue.get())
+
+        for response in responses:
+            if response.status_code == 200:
+                return True
+        return False
 
     def validate_block(self, block: Block):
         if block.previous_hash != "1":
@@ -242,47 +261,54 @@ class Node:
         self.chain.add_block(block)
         return True
 
-    # consensus functions
-
-    def filter_blocks(self, mined_block):
+    def remove_double_transactions(self, received_block):
         with self.block_lock:
-            total_transactions = list(
-                itertools.chain.from_iterable(
-                    [
-                        unc_block.transactions
-                        for unc_block in self.unconfirmed_blocks
-                    ]
+            total_transactions = [
+                transaction
+                for block in self.unconfirmed_blocks
+                for transaction in block.list_of_transactions
+            ]
+
+            if self.current_block.list_of_transactions:
+                total_transactions.extend(
+                    self.current_block.list_of_transactions
                 )
-            )
-            if self.current_block:
-                total_transactions.extend(self.current_block.transactions)
-            self.current_block.transactions = []
-            filtered_transactions = [
+            self.current_block.list_of_transactions = []
+
+            unique_transactions = [
                 transaction
                 for transaction in total_transactions
-                if (transaction not in mined_block.transactions)
+                if (transaction not in received_block.list_of_transactions)
             ]
-            final_idx = 0
-            if not self.unconfirmed_blocks:
-                self.current_block.transactions = deepcopy(
-                    filtered_transactions
-                )
-                return
-            i = 0
-            while (i + 1) * gb.capacity <= len(filtered_transactions):
-                self.unconfirmed_blocks[i].transactions = deepcopy(
-                    filtered_transactions[
-                        i * gb.capacity : (i + 1) * gb.capacity
-                    ]
-                )
-                i += 1
-            if i * gb.capacity < len(filtered_transactions):
-                self.current_block.transactions = deepcopy(
-                    filtered_transactions[i * gb.capacity :]
+
+            new_received_transactions = [
+                transaction
+                for transaction in received_block.list_of_transactions
+                if (transaction not in total_transactions)
+            ]
+            if new_received_transactions:
+                print(
+                    """
+                    #######################################
+                    ################THAUMA#################
+                    #######################################
+                    """
                 )
 
-            for i in range(len(self.unconfirmed_blocks) - i):
-                self.unconfirmed_blocks.pop()
+            self.unconfirmed_blocks = []
+            while len(unique_transactions) > gb.capacity:
+                block = Block()
+                block.list_of_transactions = deepcopy(
+                    unique_transactions[: gb.capacity]
+                )
+                self.unconfirmed_blocks.append(block)
+                unique_transactions = unique_transactions[gb.capacity :]
+
+            if unique_transactions:
+                self.current_block.list_of_transactions = deepcopy(
+                    unique_transactions
+                )
+
         return
 
     def validate_chain(self, chain):
@@ -326,5 +352,52 @@ class Node:
         sleep(5)
         return True
 
-    def resolve_conflicts(self, new_block):
-        pass
+    def resolve_conflicts(self, received_block):
+        longest_chain_length = len(self.chain.blocks)
+        longest_chain_id = self.id
+        for node in self.ring.values():
+            if node["id"] == self.id:
+                continue
+            response = requests.get(
+                "http://"
+                + node["ip"]
+                + ":"
+                + str(node["port"])
+                + "/chain/length"
+            )
+            if response.json()["length"] >= longest_chain_length:
+                longest_chain_length = response.json()["length"]
+                longest_chain_id = node["id"]
+
+        if longest_chain_id == self.id:
+            return
+
+        chain = requests.get(
+            "http://"
+            + self.ring[longest_chain_id]["ip"]
+            + ":"
+            + str(self.ring[longest_chain_id]["port"])
+            + "/chain"
+        ).json()
+
+        self.stop_mining = True
+        with self.filter_lock:
+            i = len(chain.blocks) - 1
+            while i > 0 and (
+                (
+                    chain.blocks[i].current_hash
+                    != self.chain.blocks[-1].current_hash
+                )
+            ):
+                i -= 1
+
+            for block in reversed(self.chain.blocks[i + 1 :]):
+                self.unconfirmed_blocks.appendleft(block)
+
+            for block in chain.blocks[i + 1 :]:
+                self.remove_double_transactions(block)
+
+            self.chain = chain
+            self.stop_mining = False
+
+        return self.validate_block(received_block)

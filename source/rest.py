@@ -18,6 +18,20 @@ clients_connected = 0
 node = Node()
 
 
+@app.get("/chain/length")
+def chain_length():
+    global node
+
+    return {"length": len(node.chain.blocks)}
+
+
+@app.get("/chain")
+def chain():
+    global node
+
+    return node.chain.__dict__
+
+
 @app.post("/receive_block")
 def receive_block(block_packet: BlockPacket):
     global node
@@ -26,9 +40,10 @@ def receive_block(block_packet: BlockPacket):
 
     if node.validate_block(block):
         if node.im_mining:
-            print("\n###################KAPPA###################\n", flush=True)
+            print(
+                "\n###################KAPPA###################\n", flush=True
+            )
             node.stop_mining = True
-        # remove double transactions from current block
 
         return {"status": "Block received and validated"}
 
@@ -78,7 +93,9 @@ def client_connection(client_connection: ClientConnection, request: Request):
     if len(node.ring) == gb.participants - 1:
         print("Initializing bootstrap node", flush=True)
         node.id = 0
-        node.register_node_to_ring(0, "bootstrap", 8000, node.wallet.address, 0)
+        node.register_node_to_ring(
+            0, "bootstrap", 8000, node.wallet.address, 0
+        )
 
         print(
             "Create the first transaction. Money out of thin air!!", flush=True
@@ -151,7 +168,7 @@ def start():
 def test():
     global node
 
-    return node.chain.__dict__
+    return node.resolve_conflicts(None)
 
 
 def main():
