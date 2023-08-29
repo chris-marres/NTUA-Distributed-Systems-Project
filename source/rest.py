@@ -38,12 +38,34 @@ def receive_block(block_packet: BlockPacket):
 
     block = convert_json_to_block(block_packet)
 
+    node.chain_lock.acquire()
     if node.validate_block(block):
-        if node.im_mining:
-            print(
-                "\n###################KAPPA###################\n", flush=True
+        node.stop_mining = True
+        with node.filter_lock:
+            node.chain.blocks.append(block)
+            node.chain_lock.release()
+            node.remove_double_transactions(block)
+            node.stop_mining = False
+
+    else:
+        if not block.previous_hash == node.chain.blocks[-1].current_hash:
+            node.chain_lock.release()
+            raise HTTPException(
+                status_code=400, detail="Block signature is not valid"
             )
-            node.stop_mining = True
+        else:
+            if node.resolve_conflicts(block):
+                node.stop_mining = True
+                with node.filter_lock:
+                    node.chain.blocks.append(block)
+                    node.chain_lock.release()
+                    node.remove_double_transactions(block)
+                    node.stop_mining = False
+            else:
+                node.chain_lock.release()
+                raise HTTPException(
+                    status_code=400, detail="Block unacceptable"
+                )
 
         return {"status": "Block received and validated"}
 

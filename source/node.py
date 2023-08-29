@@ -169,26 +169,19 @@ class Node:
             with self.filter_lock:
                 if self.unconfirmed_blocks:
                     mined_block = self.unconfirmed_blocks.popleft()
-                    mining_result = self.mine_block(mined_block)
-                    if mining_result:
-                        if self.stop_mining:
-                            self.unconfirmed_blocks.appendleft(mined_block)
-                        else:
-                            break
-                    else:
+                    self.mine_block(mined_block)
+                    if self.stop_mining:
                         self.unconfirmed_blocks.appendleft(mined_block)
+                    else:
+                        break
                 else:
                     return
         self.im_mining = False
 
-        # if self.stop_mining:
-        #     self.stop_mining = False
-        # else:
-        #     if self.broadcast_block(mined_block):
-        #         self.validate_block(mined_block)
-        if not self.stop_mining:
-            self.broadcast_block(mined_block)
-            self.validate_block(mined_block)
+        if self.broadcast_block(mined_block):
+            with self.chain_lock:
+                if self.validate_block(mined_block):
+                    self.chain.blocks.append(mined_block)
 
     def mine_block(self, block: Block):
         block.index = self.chain.get_next_index()
@@ -203,8 +196,6 @@ class Node:
                 block.nonce += 1
                 computed_hash = block.get_hash()
         block.current_hash = computed_hash
-
-        return True
 
     def broadcast_block(self, block):
         print(block.current_hash, flush=True)
@@ -257,8 +248,6 @@ class Node:
                     "conflict",
                 )
                 return False
-
-        self.chain.add_block(block)
         return True
 
     def remove_double_transactions(self, received_block):
