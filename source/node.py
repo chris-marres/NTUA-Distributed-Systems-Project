@@ -153,7 +153,7 @@ class Node:
         # if after adding this transaction, block is not yet full
         if (
             not self.current_block.add_transaction(trans)
-            and trans.sender_address != "0"
+            # and trans.sender_address != "0"
         ):
             self.block_lock.release()
             return
@@ -165,7 +165,6 @@ class Node:
         self.current_block = Block()
         self.block_lock.release()
         while True:
-            print("Waiting for mining to finish", flush=True)
             with self.filter_lock:
                 if self.unconfirmed_blocks:
                     mined_block = self.unconfirmed_blocks.popleft()
@@ -264,17 +263,33 @@ class Node:
                 )
             self.current_block.list_of_transactions = []
 
+            print("total transactions:", flush=True)
+            for transaction in total_transactions:
+                print()
+                print(transaction.__dict__, flush=True)
+
+            print("received transactions:", flush=True)
+            for transaction in received_block.list_of_transactions:
+                print()
+                print(transaction.__dict__, flush=True)
+
             unique_transactions = [
                 transaction
                 for transaction in total_transactions
                 if (transaction not in received_block.list_of_transactions)
             ]
 
+            print("unique transactions:", flush=True)
+            for transaction in unique_transactions:
+                print()
+                print(transaction.__dict__, flush=True)
+
             new_received_transactions = [
                 transaction
                 for transaction in received_block.list_of_transactions
                 if (transaction not in total_transactions)
             ]
+
             if new_received_transactions:
                 print(
                     """
@@ -283,9 +298,19 @@ class Node:
                     #######################################
                     """
                 )
+                print("new transactions received:")
+                for transaction in new_received_transactions:
+                    print()
+                    print(transaction.__dict__, flush=True)
 
-            self.unconfirmed_blocks = []
-            while len(unique_transactions) > gb.capacity:
+            # print()
+            # print("total transactions:")
+            # for transaction in total_transactions:
+            #     print()
+            #     print(transaction.__dict__, flush=True)
+
+            self.unconfirmed_blocks = deque()
+            while len(unique_transactions) >= gb.capacity:
                 block = Block()
                 block.list_of_transactions = deepcopy(
                     unique_transactions[: gb.capacity]
@@ -297,6 +322,8 @@ class Node:
                 self.current_block.list_of_transactions = deepcopy(
                     unique_transactions
                 )
+            else:
+                self.current_block = Block()
 
         return
 

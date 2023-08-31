@@ -67,14 +67,13 @@ def receive_block(block_packet: BlockPacket):
                     status_code=400, detail="Block unacceptable"
                 )
 
-        return {"status": "Block received and validated"}
-
-    raise HTTPException(status_code=400, detail="Block is not valid")
+    return {"status": "Block received and validated"}
 
 
 @app.post("/receive_transaction")
 def receive_transaction(transaction_packet: TransactionPacket):
     global node
+    print("Received transaction", flush=True)
 
     transaction = convert_json_to_transaction(transaction_packet)
 
