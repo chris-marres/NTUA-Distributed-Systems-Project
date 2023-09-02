@@ -1,4 +1,5 @@
 from block import Block
+from blockchain import Blockchain
 from schema import BlockPacket, TransactionPacket
 from transaction import Transaction
 
@@ -60,3 +61,25 @@ def convert_json_to_block(block_packet: BlockPacket):
     block.previous_hash = block_packet.previous_hash
 
     return block
+
+
+def convert_chain_to_json(chain: Blockchain):
+    block_packets = []
+    for block in chain.blocks:
+        block_packet = convert_block_to_json(block).serialized
+        block_packets.append(block_packet)
+
+    return block_packets
+
+
+def convert_json_to_chain(block_jsons: list):
+    blocks = []
+    for block_json in block_jsons:
+        block_packet = BlockPacket(**block_json)
+        block = convert_json_to_block(block_packet)
+        blocks.append(block)
+
+    chain = Blockchain()
+    chain.blocks = blocks
+
+    return chain

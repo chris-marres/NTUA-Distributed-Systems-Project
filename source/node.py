@@ -10,7 +10,11 @@ import glob_variables as gb
 import requests
 from block import Block
 from blockchain import Blockchain
-from converters import convert_block_to_json, convert_transaction_to_json
+from converters import (
+    convert_block_to_json,
+    convert_json_to_chain,
+    convert_transaction_to_json,
+)
 from transaction import Transaction
 from wallet import Wallet
 
@@ -40,6 +44,8 @@ class Node:
         self.block_lock = Lock()
         self.stop_mining = False
         self.im_mining = False
+        self.upcoming_transaction_ids = []
+        self.mined_block = Block()
 
     def register_node_to_ring(self, id, ip, port, public_key, balance):
         self.ring[int(public_key["n"])] = {
@@ -167,20 +173,21 @@ class Node:
         while True:
             with self.filter_lock:
                 if self.unconfirmed_blocks:
-                    mined_block = self.unconfirmed_blocks.popleft()
-                    self.mine_block(mined_block)
+                    self.mined_block = self.unconfirmed_blocks.popleft()
+                    self.mine_block(self.mined_block)
                     if self.stop_mining:
-                        self.unconfirmed_blocks.appendleft(mined_block)
+                        continue
                     else:
                         break
                 else:
                     return
         self.im_mining = False
 
-        if self.broadcast_block(mined_block):
+        if self.broadcast_block(self.mined_block):
             with self.chain_lock:
-                if self.validate_block(mined_block):
-                    self.chain.blocks.append(mined_block)
+                if self.validate_block(self.mined_block):
+                    self.chain.blocks.append(self.mined_block)
+                    self.mined_block = Block()
 
     def mine_block(self, block: Block):
         block.index = self.chain.get_next_index()
@@ -235,27 +242,38 @@ class Node:
 
     def validate_block(self, block: Block):
         if block.previous_hash != "1":
-            if not block.current_hash == block.get_hash():
-                print(
-                    "The current hash of this block is not correct", flush=True
-                )
-                return False
-
             if not block.previous_hash == self.chain.blocks[-1].current_hash:
                 print(
                     "The previous block hash is different. There should be a",
                     "conflict",
                 )
                 return False
+
+            if not block.current_hash == block.get_hash():
+                print(
+                    "The current hash of this block is not correct", flush=True
+                )
+                return False
+
         return True
 
     def remove_double_transactions(self, received_block):
         with self.block_lock:
-            total_transactions = [
-                transaction
-                for block in self.unconfirmed_blocks
-                for transaction in block.list_of_transactions
-            ]
+            total_transactions = []
+
+            if self.mined_block.list_of_transactions:
+                total_transactions.extend(
+                    self.mined_block.list_of_transactions
+                )
+            self.mined_block = Block()
+
+            total_transactions.extend(
+                [
+                    transaction
+                    for block in self.unconfirmed_blocks
+                    for transaction in block.list_of_transactions
+                ]
+            )
 
             if self.current_block.list_of_transactions:
                 total_transactions.extend(
@@ -266,48 +284,53 @@ class Node:
             print("total transactions:", flush=True)
             for transaction in total_transactions:
                 print()
-                print(transaction.__dict__, flush=True)
+                print(transaction.transaction_id, flush=True)
 
             print("received transactions:", flush=True)
             for transaction in received_block.list_of_transactions:
                 print()
-                print(transaction.__dict__, flush=True)
+                print(transaction.transaction_id, flush=True)
 
+            received_block_transaction_id_list = [
+                transaction.transaction_id
+                for transaction in received_block.list_of_transactions
+            ]
             unique_transactions = [
                 transaction
                 for transaction in total_transactions
-                if (transaction not in received_block.list_of_transactions)
+                if (
+                    transaction.transaction_id
+                    not in received_block_transaction_id_list
+                )
             ]
 
             print("unique transactions:", flush=True)
             for transaction in unique_transactions:
                 print()
-                print(transaction.__dict__, flush=True)
+                print(transaction.transaction_id, flush=True)
 
+            total_transactions_id_list = [
+                transaction.transaction_id
+                for transaction in total_transactions
+            ]
             new_received_transactions = [
                 transaction
                 for transaction in received_block.list_of_transactions
-                if (transaction not in total_transactions)
+                if transaction.transaction_id not in total_transactions_id_list
             ]
 
             if new_received_transactions:
-                print(
-                    """
-                    #######################################
-                    ################THAUMA#################
-                    #######################################
-                    """
-                )
                 print("new transactions received:")
                 for transaction in new_received_transactions:
                     print()
-                    print(transaction.__dict__, flush=True)
+                    print(transaction.transaction_id, flush=True)
 
-            # print()
-            # print("total transactions:")
-            # for transaction in total_transactions:
-            #     print()
-            #     print(transaction.__dict__, flush=True)
+            self.upcoming_transaction_ids.extend(
+                [
+                    transaction.transaction_id
+                    for transaction in new_received_transactions
+                ]
+            )
 
             self.unconfirmed_blocks = deque()
             while len(unique_transactions) >= gb.capacity:
@@ -369,6 +392,9 @@ class Node:
         return True
 
     def resolve_conflicts(self, received_block):
+        print("#####################################", flush=True)
+        print("Resolving conflicts", flush=True)
+        print("#####################################", flush=True)
         longest_chain_length = len(self.chain.blocks)
         longest_chain_id = self.id
         for node in self.ring.values():
@@ -386,16 +412,16 @@ class Node:
                 longest_chain_id = node["id"]
 
         if longest_chain_id == self.id:
-            return
+            return False
 
-        chain = requests.get(
-            "http://"
-            + self.ring[longest_chain_id]["ip"]
-            + ":"
-            + str(self.ring[longest_chain_id]["port"])
-            + "/chain"
-        ).json()
+        for node in self.ring.values():
+            if node["id"] == longest_chain_id:
+                response = requests.get(
+                    "http://" + node["ip"] + ":" + str(node["port"]) + "/chain"
+                ).json()
+                break
 
+        chain = convert_json_to_chain(response["block_packets"])
         self.stop_mining = True
         with self.filter_lock:
             i = len(chain.blocks) - 1

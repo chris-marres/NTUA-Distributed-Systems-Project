@@ -6,7 +6,11 @@ from time import sleep
 import glob_variables as gb
 import requests
 import uvicorn
-from converters import convert_json_to_block, convert_json_to_transaction
+from converters import (
+    convert_chain_to_json,
+    convert_json_to_block,
+    convert_json_to_transaction,
+)
 from fastapi import FastAPI, HTTPException, Request
 from node import Node
 from schema import BlockPacket, ClientConnection, RingPacket, TransactionPacket
@@ -29,7 +33,27 @@ def chain_length():
 def chain():
     global node
 
-    return node.chain.__dict__
+    return {"block_packets": convert_chain_to_json(node.chain)}
+
+
+@app.get("/test")
+def chain():
+    global node
+
+    chains_lengths = []
+    for other_node in node.ring.values():
+        if other_node["id"] == node.id:
+            continue
+        chain_length = requests.get(
+            "http://"
+            + other_node["ip"]
+            + ":"
+            + str(other_node["port"])
+            + "/chain/length"
+        ).json()
+        chains_lengths.append(chain_length)
+
+    return {"lengths": chains_lengths}
 
 
 @app.post("/receive_block")
@@ -48,12 +72,7 @@ def receive_block(block_packet: BlockPacket):
             node.stop_mining = False
 
     else:
-        if not block.previous_hash == node.chain.blocks[-1].current_hash:
-            node.chain_lock.release()
-            raise HTTPException(
-                status_code=400, detail="Block signature is not valid"
-            )
-        else:
+        if block.current_hash == block.get_hash():
             if node.resolve_conflicts(block):
                 node.stop_mining = True
                 with node.filter_lock:
@@ -67,6 +86,12 @@ def receive_block(block_packet: BlockPacket):
                     status_code=400, detail="Block unacceptable"
                 )
 
+        else:
+            node.chain_lock.release()
+            raise HTTPException(
+                status_code=400, detail="Block signature is not valid"
+            )
+
     return {"status": "Block received and validated"}
 
 
@@ -76,6 +101,11 @@ def receive_transaction(transaction_packet: TransactionPacket):
     print("Received transaction", flush=True)
 
     transaction = convert_json_to_transaction(transaction_packet)
+    if transaction.transaction_id in node.upcoming_transaction_ids:
+        node.upcoming_transaction_ids.remove(transaction.transaction_id)
+        raise HTTPException(
+            status_code=400, detail="Transaction already processed"
+        )
 
     if node.validate_transaction(transaction):
         node.add_transaction_to_block(transaction)
@@ -183,13 +213,6 @@ def start():
         lines = infile.readlines()
         for line in lines:
             print(line, flush=True)
-
-
-@app.get("/test")
-def test():
-    global node
-
-    return node.resolve_conflicts(None)
 
 
 def main():
