@@ -1,6 +1,7 @@
 import json
 import sys
 import threading
+from queue import Queue
 from time import sleep
 
 import glob_variables as gb
@@ -36,24 +37,18 @@ def chain():
     return {"block_packets": convert_chain_to_json(node.chain)}
 
 
-@app.get("/test")
+@app.get("/id_to_address")
 def chain():
     global node
 
-    chains_lengths = []
-    for other_node in node.ring.values():
-        if other_node["id"] == node.id:
-            continue
-        chain_length = requests.get(
-            "http://"
-            + other_node["ip"]
-            + ":"
-            + str(other_node["port"])
-            + "/chain/length"
-        ).json()
-        chains_lengths.append(chain_length)
+    return {"id_to_address": node.id_to_address}
 
-    return {"lengths": chains_lengths}
+
+@app.get("/get_ring")
+def get_ring():
+    global node
+
+    return {"ring": node.ring}
 
 
 @app.post("/receive_block")
@@ -125,6 +120,63 @@ def get_next_available_port_and_id():
     return {"id": clients_connected, "port": port}
 
 
+def start_transactions_thread():
+    global node
+    sleep(10)
+
+    index = 0
+    with open("/transactions/transactions.txt", "r") as infile:
+        lines = infile.readlines()
+        for line in lines:
+            if index == 1:
+                break
+            print(line, flush=True)
+            receiver_id = int(line.split(" ")[0][-1])
+            amount = int(line.split(" ")[1])
+            node.create_transaction(
+                node.id_to_address[receiver_id],
+                amount,
+            )
+            index += 1
+
+
+@app.get("/start")
+def start():
+    threading.Thread(target=start_transactions_thread).start()
+    return {"status": "Started"}
+
+
+def start_client_transactions_thread():
+    global node
+
+    def get_start(queue, url):
+        response = requests.get(url=url)
+        queue.put(response)
+
+    response_queue = Queue()
+    threads = []
+    for other_node in node.ring.values():
+        if other_node["id"] == node.id:
+            continue
+        thread = threading.Thread(
+            target=get_start,
+            args=(
+                response_queue,
+                f"http://{other_node['ip']}:{str(other_node['port'])}/start",
+            ),
+        )
+        threads.append(thread)
+        thread.start()
+
+    for thread in threads:
+        thread.join()
+
+    start()
+
+
+start_thread = threading.Thread(target=start_client_transactions_thread)
+
+
 @app.post("/client_connection")
 def client_connection(client_connection: ClientConnection, request: Request):
     global node
@@ -148,6 +200,11 @@ def client_connection(client_connection: ClientConnection, request: Request):
             0, "bootstrap", 8000, node.wallet.address, 0
         )
 
+        node.id_to_address = {
+            value["id"]: value["public_key"]["n"]
+            for value in node.ring.values()
+        }
+
         print(
             "Create the first transaction. Money out of thin air!!", flush=True
         )
@@ -162,6 +219,7 @@ def client_connection(client_connection: ClientConnection, request: Request):
         else:
             print("Ring broadcast failed", flush=True)
 
+        start_thread.start()
     return {"id": client_connection.id, "port": client_connection.port}
 
 
@@ -174,6 +232,9 @@ def receive_ring(ring: RingPacket, request: Request):
 
     # Create ring object from dictionary
     node.ring = {int(key): value for key, value in ring_dict.items()}
+    node.id_to_address = {
+        value["id"]: value["public_key"]["n"] for value in node.ring.values()
+    }
 
     return {"status": "Ring received"}
 
@@ -205,14 +266,6 @@ def balance():
     global node
 
     return {"balance": node.wallet.balance}
-
-
-@app.get("/start")
-def start():
-    with open("/transactions/transactions.txt", "r") as infile:
-        lines = infile.readlines()
-        for line in lines:
-            print(line, flush=True)
 
 
 def main():

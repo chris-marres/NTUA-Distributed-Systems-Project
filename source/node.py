@@ -46,6 +46,7 @@ class Node:
         self.im_mining = False
         self.upcoming_transaction_ids = []
         self.mined_block = Block()
+        self.id_to_address = {}
 
     def register_node_to_ring(self, id, ip, port, public_key, balance):
         self.ring[int(public_key["n"])] = {
@@ -65,7 +66,7 @@ class Node:
         for trans in self.wallet.transactions:
             for output in trans.transaction_outputs:
                 if (
-                    output["receiver_address"]["n"] == self.wallet.address["n"]
+                    output["receiver_address"] == self.wallet.address["n"]
                     and output["unspent"]
                 ):
                     nbcs += output["amount"]
