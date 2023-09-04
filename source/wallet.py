@@ -31,7 +31,7 @@ class Wallet:
         for trans in self.transactions:
             for output in trans.transaction_outputs:
                 if (
-                    output["receiver_address"] == self.address["n"]
+                    output["receiver_address"]["n"] == self.address["n"]
                     and output["unspent"]
                 ):
                     total_amount += output["amount"]

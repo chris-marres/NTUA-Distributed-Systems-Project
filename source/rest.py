@@ -96,7 +96,23 @@ def receive_transaction(transaction_packet: TransactionPacket):
     print("Received transaction", flush=True)
 
     transaction = convert_json_to_transaction(transaction_packet)
-    if transaction.transaction_id in node.upcoming_transaction_ids:
+    if (
+        transaction.transaction_id in node.upcoming_transaction_ids
+        and transaction.sender_address != "0"
+    ):
+        if (
+            transaction.sender_address == node.wallet.public_key
+            or transaction.receiver_address == node.wallet.public_key
+        ):
+            node.wallet.transactions.append(transaction)
+
+        # update the balance of the sender and the receiver
+        for ring_node in node.ring.values():
+            if ring_node["public_key"] == transaction.sender_address:
+                ring_node["balance"] -= transaction.amount
+            if ring_node["public_key"] == transaction.receiver_address:
+                ring_node["balance"] += transaction.amount
+
         node.upcoming_transaction_ids.remove(transaction.transaction_id)
         raise HTTPException(
             status_code=400, detail="Transaction already processed"
@@ -201,8 +217,7 @@ def client_connection(client_connection: ClientConnection, request: Request):
         )
 
         node.id_to_address = {
-            value["id"]: value["public_key"]["n"]
-            for value in node.ring.values()
+            value["id"]: value["public_key"] for value in node.ring.values()
         }
 
         print(
@@ -233,7 +248,7 @@ def receive_ring(ring: RingPacket, request: Request):
     # Create ring object from dictionary
     node.ring = {int(key): value for key, value in ring_dict.items()}
     node.id_to_address = {
-        value["id"]: value["public_key"]["n"] for value in node.ring.values()
+        value["id"]: value["public_key"] for value in node.ring.values()
     }
 
     return {"status": "Ring received"}

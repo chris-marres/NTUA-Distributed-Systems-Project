@@ -45,7 +45,7 @@ class Node:
         self.stop_mining = False
         self.im_mining = False
         self.upcoming_transaction_ids = []
-        self.mined_block = Block()
+        mined_block = Block()
         self.id_to_address = {}
 
     def register_node_to_ring(self, id, ip, port, public_key, balance):
@@ -66,7 +66,7 @@ class Node:
         for trans in self.wallet.transactions:
             for output in trans.transaction_outputs:
                 if (
-                    output["receiver_address"] == self.wallet.address["n"]
+                    output["receiver_address"]["n"] == self.wallet.address["n"]
                     and output["unspent"]
                 ):
                     nbcs += output["amount"]
@@ -160,35 +160,38 @@ class Node:
         # if after adding this transaction, block is not yet full
         if (
             not self.current_block.add_transaction(trans)
-            # and trans.sender_address != "0"
+            and trans.sender_address != "0"
         ):
             self.block_lock.release()
             return
         # if block is now full, start the mining procedure
 
-        self.im_mining = True
         # First, add the current block in the queue of unconfirmed blocks
         self.unconfirmed_blocks.append(deepcopy(self.current_block))
         self.current_block = Block()
         self.block_lock.release()
+
+        mined_block = self.mine()
+        while mined_block:
+            if self.broadcast_block(mined_block):
+                with self.chain_lock:
+                    if self.validate_block(mined_block):
+                        self.chain.blocks.append(mined_block)
+
+            mined_block = self.mine()
+
+    def mine(self):
         while True:
             with self.filter_lock:
                 if self.unconfirmed_blocks:
-                    self.mined_block = self.unconfirmed_blocks.popleft()
-                    self.mine_block(self.mined_block)
+                    mined_block = self.unconfirmed_blocks.popleft()
+                    self.mine_block(mined_block)
                     if self.stop_mining:
-                        continue
+                        self.unconfirmed_blocks.appendleft(mined_block)
                     else:
-                        break
+                        return mined_block
                 else:
-                    return
-        self.im_mining = False
-
-        if self.broadcast_block(self.mined_block):
-            with self.chain_lock:
-                if self.validate_block(self.mined_block):
-                    self.chain.blocks.append(self.mined_block)
-                    self.mined_block = Block()
+                    return None
 
     def mine_block(self, block: Block):
         block.index = self.chain.get_next_index()
@@ -260,21 +263,11 @@ class Node:
 
     def remove_double_transactions(self, received_block):
         with self.block_lock:
-            total_transactions = []
-
-            if self.mined_block.list_of_transactions:
-                total_transactions.extend(
-                    self.mined_block.list_of_transactions
-                )
-            self.mined_block = Block()
-
-            total_transactions.extend(
-                [
-                    transaction
-                    for block in self.unconfirmed_blocks
-                    for transaction in block.list_of_transactions
-                ]
-            )
+            total_transactions = [
+                transaction
+                for block in self.unconfirmed_blocks
+                for transaction in block.list_of_transactions
+            ]
 
             if self.current_block.list_of_transactions:
                 total_transactions.extend(
@@ -282,15 +275,15 @@ class Node:
                 )
             self.current_block.list_of_transactions = []
 
-            print("total transactions:", flush=True)
-            for transaction in total_transactions:
-                print()
-                print(transaction.transaction_id, flush=True)
+            # print("total transactions:", flush=True)
+            # for transaction in total_transactions:
+            #     print()
+            #     print(transaction.transaction_id, flush=True)
 
-            print("received transactions:", flush=True)
-            for transaction in received_block.list_of_transactions:
-                print()
-                print(transaction.transaction_id, flush=True)
+            # print("received transactions:", flush=True)
+            # for transaction in received_block.list_of_transactions:
+            #     print()
+            #     print(transaction.transaction_id, flush=True)
 
             received_block_transaction_id_list = [
                 transaction.transaction_id
@@ -305,10 +298,10 @@ class Node:
                 )
             ]
 
-            print("unique transactions:", flush=True)
-            for transaction in unique_transactions:
-                print()
-                print(transaction.transaction_id, flush=True)
+            # print("unique transactions:", flush=True)
+            # for transaction in unique_transactions:
+            #     print()
+            #     print(transaction.transaction_id, flush=True)
 
             total_transactions_id_list = [
                 transaction.transaction_id
