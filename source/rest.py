@@ -144,7 +144,7 @@ def start_transactions_thread():
     with open("/transactions/transactions.txt", "r") as infile:
         lines = infile.readlines()
         for line in lines:
-            if index == 1:
+            if index == 3:
                 break
             print(line, flush=True)
             receiver_id = int(line.split(" ")[0][-1])

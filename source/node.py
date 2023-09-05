@@ -72,8 +72,8 @@ class Node:
                     nbcs += output["amount"]
                     output["unspent"] = False
                     trans_input.append(output)
-                if nbcs >= amount:
-                    break
+            if nbcs >= amount:
+                break
 
         if nbcs < amount:
             for output in trans_input:
@@ -177,6 +177,34 @@ class Node:
                 with self.chain_lock:
                     if self.validate_block(mined_block):
                         self.chain.blocks.append(mined_block)
+            else:
+                with self.filter_lock and self.block_lock:
+                    temp_list = [
+                        transaction
+                        for transaction in mined_block.list_of_transactions
+                        if transaction.transaction_id
+                        not in self.upcoming_transaction_ids
+                    ]
+                    if len(temp_list) == gb.capacity:
+                        self.unconfirmed_blocks.appendleft(
+                            deepcopy(mined_block)
+                        )
+                    else:
+                        temp_list.extend(
+                            [
+                                transaction
+                                for block in self.unconfirmed_blocks
+                                for transaction in block.list_of_transactions
+                            ]
+                        )
+
+                        if self.current_block.list_of_transactions:
+                            temp_list.extend(
+                                self.current_block.list_of_transactions
+                            )
+                        self.current_block.list_of_transactions = []
+
+                        self.recreate_unconfirmed_blocks(temp_list)
 
             mined_block = self.mine()
 
@@ -327,22 +355,21 @@ class Node:
             )
 
             self.unconfirmed_blocks = deque()
-            while len(unique_transactions) >= gb.capacity:
-                block = Block()
-                block.list_of_transactions = deepcopy(
-                    unique_transactions[: gb.capacity]
-                )
-                self.unconfirmed_blocks.append(block)
-                unique_transactions = unique_transactions[gb.capacity :]
-
-            if unique_transactions:
-                self.current_block.list_of_transactions = deepcopy(
-                    unique_transactions
-                )
-            else:
-                self.current_block = Block()
+            self.recreate_unconfirmed_blocks(unique_transactions)
 
         return
+
+    def recreate_unconfirmed_blocks(self, transactions: list[Transaction]):
+        while len(transactions) >= gb.capacity:
+            block = Block()
+            block.list_of_transactions = deepcopy(transactions[: gb.capacity])
+            self.unconfirmed_blocks.append(block)
+            transactions = transactions[gb.capacity :]
+
+        if transactions:
+            self.current_block.list_of_transactions = deepcopy(transactions)
+        else:
+            self.current_block = Block()
 
     def validate_chain(self, chain):
         blocks = chain.blocks

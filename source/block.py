@@ -49,16 +49,15 @@ class Block:
     def add_transaction(self, transaction):
         length = len(self.list_of_transactions)
 
-        # After the addition of that transaction, the block will be full
-        if length == (gb.capacity - 1):
-            self.list_of_transactions.append(transaction)
-            return True
-
-        # The block is already full
-        elif length == gb.capacity:
+        if length == gb.capacity:
             print(
                 "The block is already full and no more transactions could be added"
             )
+            return False
 
-        # The block is either not full yet or already full -before adding the given transaction-
+        self.list_of_transactions.append(transaction)
+
+        if length + 1 == gb.capacity:
+            return True
+
         return False
