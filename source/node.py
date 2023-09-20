@@ -35,7 +35,6 @@ class Node:
         self.nbc = 0
         self.chain = Blockchain()
         self.wallet = Wallet()
-        # Ring: information regarding the id, ip, port, public key and balance of every node
         self.current_block = Block()
         self.ring = {}
         self.unconfirmed_blocks = deque()
@@ -136,8 +135,8 @@ class Node:
 
         # check if sender has enough money
         if self.ring[trans.sender_address["n"]]["balance"] >= trans.amount:
-            # create the 2 transaction outputs and add them in UTXOs list.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             return True
+
         print("There are not enough money to be spent", flush=True)
         return False
 
@@ -303,16 +302,6 @@ class Node:
                 )
             self.current_block.list_of_transactions = []
 
-            # print("total transactions:", flush=True)
-            # for transaction in total_transactions:
-            #     print()
-            #     print(transaction.transaction_id, flush=True)
-
-            # print("received transactions:", flush=True)
-            # for transaction in received_block.list_of_transactions:
-            #     print()
-            #     print(transaction.transaction_id, flush=True)
-
             received_block_transaction_id_list = [
                 transaction.transaction_id
                 for transaction in received_block.list_of_transactions
@@ -326,11 +315,6 @@ class Node:
                 )
             ]
 
-            # print("unique transactions:", flush=True)
-            # for transaction in unique_transactions:
-            #     print()
-            #     print(transaction.transaction_id, flush=True)
-
             total_transactions_id_list = [
                 transaction.transaction_id
                 for transaction in total_transactions
@@ -340,12 +324,6 @@ class Node:
                 for transaction in received_block.list_of_transactions
                 if transaction.transaction_id not in total_transactions_id_list
             ]
-
-            if new_received_transactions:
-                print("new transactions received:")
-                for transaction in new_received_transactions:
-                    print()
-                    print(transaction.transaction_id, flush=True)
 
             self.upcoming_transaction_ids.extend(
                 [
@@ -413,9 +391,6 @@ class Node:
         return True
 
     def resolve_conflicts(self, received_block):
-        print("#####################################", flush=True)
-        print("Resolving conflicts", flush=True)
-        print("#####################################", flush=True)
         longest_chain_length = len(self.chain.blocks)
         longest_chain_id = self.id
         for node in self.ring.values():

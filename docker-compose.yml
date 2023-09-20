@@ -4,7 +4,7 @@ name: "blockchain_cluster"
 x-env-variables: &env-variables
   PARTICIPANTS: 5
   DIFFICULTY: 4
-  CAPACITY: 3
+  CAPACITY: 1
 
 services:
   bootstrap:
@@ -17,7 +17,9 @@ services:
       - ./transactions/5nodes/transactions0.txt:/transactions/transactions.txt
     ports:
       - "8000:8000"
-    environment: *env-variables
+    environment:
+      <<: *env-variables
+      ID: 0
 
   client1:
     container_name: client1
@@ -31,7 +33,9 @@ services:
       - ./transactions/5nodes/transactions1.txt:/transactions/transactions.txt
     ports:
       - "8001:8001"
-    environment: *env-variables
+    environment:
+      <<: *env-variables
+      ID: 1
 
   client2:
     container_name: client2
@@ -45,7 +49,9 @@ services:
       - ./transactions/5nodes/transactions2.txt:/transactions/transactions.txt
     ports:
       - "8002:8002"
-    environment: *env-variables
+    environment:
+      <<: *env-variables
+      ID: 2
 
   client3:
     container_name: client3
@@ -59,7 +65,9 @@ services:
       - ./transactions/5nodes/transactions3.txt:/transactions/transactions.txt
     ports:
       - "8003:8003"
-    environment: *env-variables
+    environment:
+      <<: *env-variables
+      ID: 3
 
   client4:
     container_name: client4
@@ -73,4 +81,6 @@ services:
       - ./transactions/5nodes/transactions4.txt:/transactions/transactions.txt
     ports:
       - "8004:8004"
-    environment: *env-variables
+    environment:
+      <<: *env-variables
+      ID: 4

@@ -15,13 +15,6 @@ class Wallet:
     def __init__(self):
         self.private_key = RSA.generate(bits=2048)
         self.public_key = {"n": self.private_key.n, "e": self.private_key.e}
-
-        """with open("public.pem", "wb") as f:
-			f.write(self.public_key.save_pkcs1("PEM"))
-		
-		with open("private.pem", "wb") as f:
-			f.write(self.private_key.save_pkcs1("PEM"))"""
-
         self.address = self.public_key
         self.transactions = []
 

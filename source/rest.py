@@ -2,7 +2,7 @@ import json
 import sys
 import threading
 from queue import Queue
-from time import sleep
+from time import sleep, time
 
 import glob_variables as gb
 import requests
@@ -49,6 +49,24 @@ def get_ring():
     global node
 
     return {"ring": node.ring}
+
+
+@app.get("/create_transaction")
+def create_transaction(receiver_address: int, amount: int):
+    global node
+
+    transaction = node.create_transaction(
+        {"n": receiver_address, "e": 65537}, amount
+    )
+
+    return {"message": "Transaction created"}
+
+
+@app.get("/view_transactions")
+def view_transactions():
+    global node
+
+    return {"transactions": node.chain.blocks[-1].list_of_transactions}
 
 
 @app.post("/receive_block")
@@ -138,22 +156,34 @@ def get_next_available_port_and_id():
 
 def start_transactions_thread():
     global node
+    global transactions_total_time
     sleep(10)
+
+    transactions_start_time = time()
 
     index = 0
     with open("/transactions/transactions.txt", "r") as infile:
         lines = infile.readlines()
         for line in lines:
-            if index == 3:
+            if index == 4:
                 break
-            print(line, flush=True)
             receiver_id = int(line.split(" ")[0][-1])
             amount = int(line.split(" ")[1])
+
+            print(f"Sending {amount} coins to client{receiver_id}", flush=True)
+
             node.create_transaction(
                 node.id_to_address[receiver_id],
                 amount,
             )
             index += 1
+
+    transactions_total_time = time() - transactions_start_time
+    print(f"Transactions Total time: {transactions_total_time}", flush=True)
+    print(
+        f"Transactions Average time: {transactions_total_time / index}",
+        flush=True,
+    )
 
 
 @app.get("/start")
