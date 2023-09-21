@@ -4,8 +4,8 @@ name: "blockchain_cluster"
 x-env-variables: &env-variables
   PARTICIPANTS: 5
   DIFFICULTY: 4
-  CAPACITY: 1
-  EXPERIMENT_ID: p5-d4-c1
+  CAPACITY: 10
+  EXPERIMENT_ID: p5-d4-c10
 
 services:
   bootstrap:

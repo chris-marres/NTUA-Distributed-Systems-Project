@@ -69,17 +69,24 @@ def convert_chain_to_json(chain: Blockchain):
         block_packet = convert_block_to_json(block).serialized
         block_packets.append(block_packet)
 
-    return block_packets
+    return {
+        "block_packets": block_packets,
+        "total_block_time": chain.total_block_time,
+        "block_counter": chain.block_counter,
+        "previous_block_time": chain.previous_block_time,
+    }
 
 
-def convert_json_to_chain(block_jsons: list):
+def convert_json_to_chain(
+    block_jsons: list, total_block_time, previous_block_time, block_counter
+):
     blocks = []
     for block_json in block_jsons:
         block_packet = BlockPacket(**block_json)
         block = convert_json_to_block(block_packet)
         blocks.append(block)
 
-    chain = Blockchain()
+    chain = Blockchain(total_block_time, previous_block_time, block_counter)
     chain.blocks = blocks
 
     return chain

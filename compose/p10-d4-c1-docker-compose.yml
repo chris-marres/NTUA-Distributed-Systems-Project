@@ -1,0 +1,177 @@
+version: "3.8"
+name: "blockchain_cluster"
+
+x-env-variables: &env-variables
+  PARTICIPANTS: 10
+  DIFFICULTY: 4
+  CAPACITY: 1
+  EXPERIMENT_ID: p10-d4-c1
+
+services:
+  bootstrap:
+    container_name: bootstrap
+    restart: no
+    build: .
+    command: python rest.py bootstrap
+    volumes:
+      - ../source:/source
+      - ../transactions/10nodes/transactions0.txt:/transactions/transactions.txt
+      - ../outputs:/outputs
+    ports:
+      - "8000:8000"
+    environment:
+      <<: *env-variables
+      ID: 0
+
+  client1:
+    container_name: client1
+    restart: no
+    build: .
+    command: python rest.py client 1
+    depends_on:
+      - bootstrap
+    volumes:
+      - ../source:/source
+      - ../transactions/10nodes/transactions1.txt:/transactions/transactions.txt
+      - ../outputs:/outputs
+    ports:
+      - "8001:8001"
+    environment:
+      <<: *env-variables
+      ID: 1
+
+  client2:
+    container_name: client2
+    restart: no
+    build: .
+    command: python rest.py client 2
+    depends_on:
+      - bootstrap
+    volumes:
+      - ../source:/source
+      - ../transactions/10nodes/transactions2.txt:/transactions/transactions.txt
+      - ../outputs:/outputs
+    ports:
+      - "8002:8002"
+    environment:
+      <<: *env-variables
+      ID: 2
+
+  client3:
+    container_name: client3
+    restart: no
+    build: .
+    command: python rest.py client 3
+    depends_on:
+      - bootstrap
+    volumes:
+      - ../source:/source
+      - ../transactions/10nodes/transactions3.txt:/transactions/transactions.txt
+      - ../outputs:/outputs
+    ports:
+      - "8003:8003"
+    environment:
+      <<: *env-variables
+      ID: 3
+
+  client4:
+    container_name: client4
+    restart: no
+    build: .
+    command: python rest.py client 4
+    depends_on:
+      - bootstrap
+    volumes:
+      - ../source:/source
+      - ../transactions/10nodes/transactions4.txt:/transactions/transactions.txt
+      - ../outputs:/outputs
+    ports:
+      - "8004:8004"
+    environment:
+      <<: *env-variables
+      ID: 4
+
+  client5:
+    container_name: client5
+    restart: no
+    build: .
+    command: python rest.py client 5
+    depends_on:
+      - bootstrap
+    volumes:
+      - ../source:/source
+      - ../transactions/10nodes/transactions5.txt:/transactions/transactions.txt
+      - ../outputs:/outputs
+    ports:
+      - "8005:8005"
+    environment:
+      <<: *env-variables
+      ID: 5
+
+  client6:
+    container_name: client6
+    restart: no
+    build: .
+    command: python rest.py client 6
+    depends_on:
+      - bootstrap
+    volumes:
+      - ../source:/source
+      - ../transactions/10nodes/transactions6.txt:/transactions/transactions.txt
+      - ../outputs:/outputs
+    ports:
+      - "8006:8006"
+    environment:
+      <<: *env-variables
+      ID: 6
+
+  client7:
+    container_name: client7
+    restart: no
+    build: .
+    command: python rest.py client 7
+    depends_on:
+      - bootstrap
+    volumes:
+      - ../source:/source
+      - ../transactions/10nodes/transactions7.txt:/transactions/transactions.txt
+      - ../outputs:/outputs
+    ports:
+      - "8007:8007"
+    environment:
+      <<: *env-variables
+      ID: 7
+
+  client8:
+    container_name: client8
+    restart: no
+    build: .
+    command: python rest.py client 8
+    depends_on:
+      - bootstrap
+    volumes:
+      - ../source:/source
+      - ../transactions/10nodes/transactions8.txt:/transactions/transactions.txt
+      - ../outputs:/outputs
+    ports:
+      - "8008:8008"
+    environment:
+      <<: *env-variables
+      ID: 8
+
+  client9:
+    container_name: client9
+    restart: no
+    build: .
+    command: python rest.py client 9
+    depends_on:
+      - bootstrap
+    volumes:
+      - ../source:/source
+      - ../transactions/10nodes/transactions9.txt:/transactions/transactions.txt
+      - ../outputs:/outputs
+    ports:
+      - "8009:8009"
+    environment:
+      <<: *env-variables
+      ID: 9

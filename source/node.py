@@ -175,7 +175,7 @@ class Node:
             if self.broadcast_block(mined_block):
                 with self.chain_lock:
                     if self.validate_block(mined_block):
-                        self.chain.blocks.append(mined_block)
+                        self.chain.add_block(mined_block)
             else:
                 with self.filter_lock and self.block_lock:
                     temp_list = [
@@ -235,8 +235,6 @@ class Node:
         block.current_hash = computed_hash
 
     def broadcast_block(self, block):
-        print(block.current_hash, flush=True)
-
         def post_block(queue, url, json):
             response = requests.post(url=url, json=json)
             queue.put(response)
@@ -417,7 +415,12 @@ class Node:
                 ).json()
                 break
 
-        chain = convert_json_to_chain(response["block_packets"])
+        chain = convert_json_to_chain(
+            response["block_packets"],
+            response["total_block_time"],
+            response["previous_block_time"],
+            response["block_counter"],
+        )
         self.stop_mining = True
         with self.filter_lock:
             i = len(chain.blocks) - 1

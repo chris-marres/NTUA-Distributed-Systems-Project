@@ -1,3 +1,4 @@
+import _thread
 import json
 import sys
 import threading
@@ -34,7 +35,7 @@ def chain_length():
 def chain():
     global node
 
-    return {"block_packets": convert_chain_to_json(node.chain)}
+    return convert_chain_to_json(node.chain)
 
 
 @app.get("/id_to_address")
@@ -79,7 +80,7 @@ def receive_block(block_packet: BlockPacket):
     if node.validate_block(block):
         node.stop_mining = True
         with node.filter_lock:
-            node.chain.blocks.append(block)
+            node.chain.add_block(block)
             node.chain_lock.release()
             node.remove_double_transactions(block)
             node.stop_mining = False
@@ -89,7 +90,7 @@ def receive_block(block_packet: BlockPacket):
             if node.resolve_conflicts(block):
                 node.stop_mining = True
                 with node.filter_lock:
-                    node.chain.blocks.append(block)
+                    node.chain.add_block(block)
                     node.chain_lock.release()
                     node.remove_double_transactions(block)
                     node.stop_mining = False
@@ -165,8 +166,6 @@ def start_transactions_thread():
     with open("/transactions/transactions.txt", "r") as infile:
         lines = infile.readlines()
         for line in lines:
-            if index == 4:
-                break
             receiver_id = int(line.split(" ")[0][-1])
             amount = int(line.split(" ")[1])
 
@@ -179,11 +178,15 @@ def start_transactions_thread():
             index += 1
 
     transactions_total_time = time() - transactions_start_time
-    print(f"Transactions Total time: {transactions_total_time}", flush=True)
-    print(
-        f"Transactions Average time: {transactions_total_time / index}",
-        flush=True,
-    )
+
+    with open(f"/outputs/{gb.experiment_id}.txt", "a") as outfile:
+        outfile.write(f"Throughput: {index / transactions_total_time}\n")
+        outfile.write(
+            f"Block time: {node.chain.total_block_time / (len(node.chain.blocks) - 1)}\n\n"
+        )
+
+    sleep(100)
+    _thread.interrupt_main()
 
 
 @app.get("/start")
