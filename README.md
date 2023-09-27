@@ -21,7 +21,7 @@ Noobcash is a decentralized cryptocurrency system. Every node is a miner and eac
 
 ## Setup / Usage
 
-- Install and open the Docker Desktop App
+- Install and open the Docker Desktop App .
   
 - Setup the environment :
 
@@ -29,13 +29,13 @@ Noobcash is a decentralized cryptocurrency system. Every node is a miner and eac
     $ docker compose build
     ```
 
-- Run the experiment for the specified parameters (i.e. number of participants = 5, difficulty = 4, capacity = 1) :
+- Run the experiment for the specified parameters (e.g. number of participants = 5, difficulty = 4, capacity = 1) :
 
     ```
     $ docker compose -f compose/p5-d4-c1-docker-compose.yml up
     ```
 
-- Alternative: Run all the experiments with 5 nodes (with all the possible combinations of the given parameters) :
+- Alternative: run all the experiments with 5 nodes (with all the possible combinations of the given parameters) :
 
     ```
     $ ./run_all_5_nodes.sh
@@ -47,7 +47,9 @@ Noobcash is a decentralized cryptocurrency system. Every node is a miner and eac
     #_thread.interrupt_main()
      ```
    
-- Run a CLI client (i.e client1) :
+- Run a CLI client (e.g. client1) :
+
+    For running a CLI client, firstly, write the following command to a terminal, -while the program is running in another terminal-, in order to 'open' the client-terminal :
 
      ```
      $ docker exec -it [container_name] bash
@@ -55,14 +57,14 @@ Noobcash is a decentralized cryptocurrency system. Every node is a miner and eac
 
     **_Example :_** ```  $docker exec -it client1 bash```
 
-    In the client-terminal, run :
+    Then, in the client-terminal, run :
     
     ```
      $ python cli/main.py [argument]
      ```
 
-    Where available arguments are the following:
-    - -h, --help   
+    Where the available arguments are:
+    - --help   
     - t [recipient_address] [amount]
     - view
     - balance
@@ -70,9 +72,10 @@ Noobcash is a decentralized cryptocurrency system. Every node is a miner and eac
     **_Example :_** ```  $python cli/main.py balance```
 
 
-- VIsit the browser page : http://localhost:8000/docs (while the program is running).
+- Visit the browser page : http://localhost:8000/docs (while the program is still running) .
     - Port 8000: bootstrap
     - Port 8001: client1
     - Port 8002: client2
     - etc...
 
+    **_NOTE :_** The recipient address of each node (i.e. its public key) can be found at the /get_ring endpoint of the previously mentioned page .
