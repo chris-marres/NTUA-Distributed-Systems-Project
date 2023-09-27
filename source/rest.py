@@ -163,16 +163,16 @@ def start_transactions_thread():
     transactions_start_time = time()
 
     index = 0
-    #counter = 0
+    counter = 0
     with open("/transactions/transactions.txt", "r") as infile:
         lines = infile.readlines()
         for line in lines:
-            #counter += 1
+            counter += 1
             receiver_id = int(line.split(" ")[0][-1])
             amount = int(line.split(" ")[1])
 
-            #if (counter > 50):
-            #    break
+            if (counter > 3):
+                break
             print(f"Sending {amount} coins to client{receiver_id}", flush=True)
 
             node.create_transaction(
@@ -181,11 +181,11 @@ def start_transactions_thread():
             )
             index += 1
 
-    print("That's all folks!", flush=True)        
+    #print("That's all folks!", flush=True)        
 
     transactions_total_time = time() - transactions_start_time
 
-    with open(f"/results/outputs-5-nodes/{gb.experiment_id}.txt", "a") as outfile:
+    with open(f"/outputs/{gb.experiment_id}.txt", "a") as outfile:
         outfile.write(f"Throughput: {index / transactions_total_time}\n")
         outfile.write(
             f"Block time: {node.chain.total_block_time / (len(node.chain.blocks) - 1)}\n\n"

@@ -1,8 +1,5 @@
 from hashlib import sha256
 
-# import requests
-# from flask import Flask, jsonify, request, render_template
-
 
 class Transaction:
 
