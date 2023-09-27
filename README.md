@@ -29,7 +29,7 @@ Noobcash is a decentralized cryptocurrency system. Every node is a miner and eac
     $ docker compose build
     ```
 
-- Run the experiment for the specified parameters (i.e number of participants = 5, difficulty = 4, capacity = 1) :
+- Run the experiment for the specified parameters (i.e. number of participants = 5, difficulty = 4, capacity = 1) :
 
     ```
     $ docker compose -f compose/p5-d4-c1-docker-compose.yml up
@@ -43,38 +43,32 @@ Noobcash is a decentralized cryptocurrency system. Every node is a miner and eac
 
     > **_NOTE :_** Before running the ./run_all_5_nodes.py command, the lines 195-196 of the source/rest.py file should be uncommented.
    
-- Run a CLI client (i.e client1):
+- Run a CLI client (i.e client1) :
 
      ```
      $ docker exec -it [container_name] bash
      ```
 
-    CLI client of noobcash.
+    **_Example :_** ```  $docker exec -it client1 bash```
 
-    Run :
+    In the client-terminal, run :
     
     ```
      $ python cli/main.py [argument]
      ```
 
-  Available arguments:
-  - -h, --help   
-  - t [recipient_address] [amount]
-  - view
-  - balance
+    Where available arguments are the following:
+    - -h, --help   
+    - t [recipient_address] [amount]
+    - view
+    - balance
 
-- VIsit the browser page : http://localhost:8000/docs
-      Port 8000: bootstrap
-      Port 8001: client1
-      Port 8002: client2
-      etc...
+    **_Example :_** ```  $python cli/main.py balance``
 
-## Contributors
 
-Developed by
+- VIsit the browser page : http://localhost:8000/docs (while the program is running).
+    - Port 8000: bootstrap
+    - Port 8001: client1
+    - Port 8002: client2
+    - etc...
 
-<p align="center">
-    <a href="https://github.com/ntua-el18046"><a href="https://github.com/chris-marres">
-<p>
-    
-as a semester project for the Distributed Systems course of NTUA-ECE.
