@@ -63,7 +63,7 @@ Noobcash is a decentralized cryptocurrency system. Every node is a miner and eac
     - view
     - balance
 
-    **_Example :_** ```  $python cli/main.py balance``
+    **_Example :_** ```  $python cli/main.py balance```
 
 
 - VIsit the browser page : http://localhost:8000/docs (while the program is running).
