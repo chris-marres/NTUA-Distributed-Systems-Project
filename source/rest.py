@@ -163,18 +163,12 @@ def start_transactions_thread():
     transactions_start_time = time()
 
     index = 0
-    counter = 0
     with open("/transactions/transactions.txt", "r") as infile:
         lines = infile.readlines()
         for line in lines:
-            counter += 1
             receiver_id = int(line.split(" ")[0][-1])
             amount = int(line.split(" ")[1])
-
-            if (counter > 3):
-                break
             print(f"Sending {amount} coins to client{receiver_id}", flush=True)
-
             node.create_transaction(
                 node.id_to_address[receiver_id],
                 amount,
