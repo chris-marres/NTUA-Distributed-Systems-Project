@@ -38,10 +38,14 @@ Noobcash is a decentralized cryptocurrency system. Every node is a miner and eac
 - Alternative: Run all the experiments with 5 nodes (with all the possible combinations of the given parameters) :
 
     ```
-    $ ./run_all_5_nodes.py
+    $ ./run_all_5_nodes.sh
     ```
 
-    > **_NOTE :_** Before running the ./run_all_5_nodes.py command, the lines 195-196 of the source/rest.py file should be uncommented.
+    > **_NOTE :_** Before running the ./run_all_5_nodes.py command, the lines 189-190 of the source/rest.py file should be uncommented. Those two lines are the following :
+     ```
+    #sleep(100)
+    #_thread.interrupt_main()
+     ```
    
 - Run a CLI client (i.e client1) :
 
